@@ -76,3 +76,22 @@ Consider command-level placement / relocation orders for forward supply points, 
 subordinates managing distribution. Travel distance, route access, exposure, finite
 stock and relocation downtime should matter if implemented. This is a design note;
 this performance patch does not change supply rules.
+
+## Design discussion — headquarters staff recommendations
+
+Requested by Larry on October 19, 2026. Proposed, not implemented in 0.20.1.
+
+- Regiment reports use S1, S2, S3 and S4; division / corps / army reports use G1–G4.
+- Personnel: loss / fatigue / recovery and reserve recommendations.
+- Intelligence: observed threats, reconnaissance needs, report age and uncertainty.
+- Operations: missions, sequencing, reserve use and support attachments.
+- Logistics: proposed supply priorities / delivery levels, reallocations and supported attachments.
+- Advice must explain evidence, proposed changes and tradeoffs, with Accept / Modify /
+  Dismiss choices. Show the exact allocations or assignments before applying them.
+- Recommendations alone never change orders, supply, attachments or authority. Accepting
+  uses the same validated command actions as manual orders. Respect finite resources,
+  existing assignments, command links, echelon authority and fog of war.
+- Use information available to the headquarters, label stale intelligence, avoid repeated
+  prompts after dismissal, and keep existing orders when the commander declines.
+- Show staff advice inside the selected headquarters report / visit view; preserve the
+  commander's ability to take or leave it without micromanaging subordinate execution.
