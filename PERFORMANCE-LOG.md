@@ -95,3 +95,17 @@ Requested by Larry on October 19, 2026. Proposed, not implemented in 0.20.1.
   prompts after dismissal, and keep existing orders when the commander declines.
 - Show staff advice inside the selected headquarters report / visit view; preserve the
   commander's ability to take or leave it without micromanaging subordinate execution.
+
+## Design discussion — reconnaissance patrols
+
+Requested by Larry on October 19, 2026. Proposed, not implemented in 0.20.1.
+
+Add a Send reconnaissance patrol action to an eligible formation. The commander picks
+an area or route to investigate; a subordinate manages a small detached patrol while
+the battalion continues its mission or holds. Avoid mandatory control of another counter.
+Represent preparation, travel, observation, report delay, recall / return and possible
+loss or overdue status. Account for a temporary commitment of parent strength / readiness
+and reconnaissance assets; this is not free or instant map revelation. Reports use
+observed information, timestamps and uncertainty. S2 / G2 may recommend a patrol, and
+results should feed intelligence and the Command Activity Log. Exact detachment size,
+visibility rules, movement, risk and resource cost remain design decisions.
