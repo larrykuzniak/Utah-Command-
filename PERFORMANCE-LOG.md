@@ -109,3 +109,10 @@ and reconnaissance assets; this is not free or instant map revelation. Reports u
 observed information, timestamps and uncertainty. S2 / G2 may recommend a patrol, and
 results should feed intelligence and the Command Activity Log. Exact detachment size,
 visibility rules, movement, risk and resource cost remain design decisions.
+
+
+## 2026-10-19 — Command edition 0.21.0
+
+Added finite supply-point routing, delayed reconnaissance reports, headquarters advice, and an activity log. Forecast preparation copies state; no persistent route cache is used. Forecasts include the coming rear refill and forward transfers; actual dispatch still uses actual blockers. Staff previews are pure.
+
+Regression checks and 48 deterministic feature-enabled battles pass. Remaining profiling candidates: repeated per-formation supply-point searches, DOM/SVG regeneration, and forecasts invoked by readiness/support checks. No Safari frame-rate measurement was available; Node tests do not establish iPad responsiveness. Physical-device layout testing remains outstanding.
