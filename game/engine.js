@@ -95,14 +95,56 @@ if(c.preset==='mortain'){const positions=[[6,2],[4,4],[6,7],[6,5],[8,5],[2,1],[2
 if(c.custom){s.scenarioSpec=JSON.parse(JSON.stringify(c));s.units=c.deployment.map((v,i)=>Object.assign(unit('custom-unit-'+i,v.name,v.side,v.x,v.y,v.type),{hp:v.hp}));s.owners=[...c.initialOwners]}
 for(let u of s.units)u.nation=u.side==='de'?'de':c.faction;return migrate(s)}
 function alive(s){return s.units.filter(u=>u.hp>0)}
-function path(s,u,target){const queue=[{x:u.x,y:u.y,cost:0,path:[]}],seen=new Set();while(queue.length){queue.sort((a,b)=>a.cost-b.cost);let p=queue.shift(),key=p.x+','+p.y;if(seen.has(key))continue;seen.add(key);if(p.x===target.x&&p.y===target.y)return p;if(p.cost>0&&enemyZone(s,p,u.side))continue;for(let n of movementNeighbors(s,u,p)){if(!stepAllowed(s,u,p,n)||alive(s).some(v=>v.id!==u.id&&v.x===n.x&&v.y===n.y))continue;queue.push({...n,cost:p.cost+moveCost(s,u,p,n),path:[...p.path,n]})}}return null}
+// Search-local priority queue. Sequence preserves the existing stable-sort tie order.
+// Nothing is cached between searches: moves, losses, and weather apply immediately.
+class RouteQueue {
+  constructor(first, compare) {
+    this.items = [];
+    this.compare = compare;
+    this.sequence = 0;
+    this.push(first);
+  }
+  get length() { return this.items.length; }
+  before(a, b) {
+    return this.compare(a.value, b.value) || a.sequence - b.sequence;
+  }
+  push(value) {
+    const node = {value, sequence: this.sequence++}, items = this.items;
+    let i = items.length;
+    items.push(node);
+    while (i > 0) {
+      const parent = (i - 1) >> 1;
+      if (this.before(items[parent], node) <= 0) break;
+      items[i] = items[parent];
+      i = parent;
+    }
+    items[i] = node;
+  }
+  shift() {
+    const items = this.items, first = items[0], last = items.pop();
+    if (items.length) {
+      let i = 0;
+      while (i * 2 + 1 < items.length) {
+        let child = i * 2 + 1;
+        if (child + 1 < items.length && this.before(items[child + 1], items[child]) < 0) child++;
+        if (this.before(last, items[child]) <= 0) break;
+        items[i] = items[child];
+        i = child;
+      }
+      items[i] = last;
+    }
+    return first.value;
+  }
+}
+function occupiedHexes(s,u){return new Set(s.units.filter(v=>v.hp>0&&v.id!==u.id).map(v=>v.x+','+v.y))}
+function path(s,u,target){const queue=new RouteQueue({x:u.x,y:u.y,cost:0,path:[]},(a,b)=>a.cost-b.cost),seen=new Set(),occupied=occupiedHexes(s,u);while(queue.length){let p=queue.shift(),key=p.x+','+p.y;if(seen.has(key))continue;seen.add(key);if(p.x===target.x&&p.y===target.y)return p;if(p.cost>0&&enemyZone(s,p,u.side))continue;for(let n of movementNeighbors(s,u,p)){if(!stepAllowed(s,u,p,n)||occupied.has(n.x+','+n.y))continue;queue.push({...n,cost:p.cost+moveCost(s,u,p,n),path:[...p.path,n]})}}return null}
 function range(u){if(u.type==='hq')return 0;return u.type==='artillery'?4:1}
 function budget(u){if(u.type==='hq')return u.rulesAdvanced&&u.suppression>=2?1:2;return Math.max(1,(u.type==='tank'?4:u.type==='artillery'?2:3)-(u.fatigue>=3?1:0)-(u.rulesAdvanced&&u.suppression>=2?1:0)-(u.operational&&u.cohesion<40?1:0)-((u.stock===undefined?u.supplied:u.stock>=2)?0:1))}
 function supplyRoute(s,u){if(u.type==='hq'&&u.x>=9)return [{x:u.x,y:u.y},{x:8,y:u.y}];
 const policy=u.side==='us'?(u.routePolicy||'shortest'):'shortest',entry=u.side==='us'?(u.supplyEntry||'auto'):'auto';
-const enemies=alive(s).filter(v=>v.side!==u.side),observed=enemies.filter(v=>!s.fog||s.finished||spotted(s,v,u.side));
-let seen=new Set(),q=[{x:u.x,y:u.y,path:[],cost:0}];
-while(q.length){q.sort((a,b)=>a.cost-b.cost);let p=q.shift(),k=p.x+','+p.y;if(seen.has(k))continue;seen.add(k);
+const enemies=alive(s).filter(v=>v.side!==u.side),observed=policy==='cautious'?enemies.filter(v=>!s.fog||s.finished||spotted(s,v,u.side)):[];
+let seen=new Set(),q=new RouteQueue({x:u.x,y:u.y,path:[],cost:0},(a,b)=>a.cost-b.cost);
+while(q.length){let p=q.shift(),k=p.x+','+p.y;if(seen.has(k))continue;seen.add(k);
 const sector=entry==='auto'||entry==='north'&&p.y<3||entry==='center'&&p.y>=3&&p.y<6||entry==='south'&&p.y>=6;
 if((u.side==='us'?p.x===8&&sector:p.x===0))return [{x:u.x,y:u.y},...p.path];
 for(let n of neighbors(p,s)){
@@ -230,7 +272,7 @@ const missionTypes=['seize','defend','support','reserve'],commandLevels=['Regime
 function commandValid(s){return typeof s.commandMode==='boolean'&&commandLevels.includes(s.commandLevel)&&['all','organic'].includes(s.supportPolicy)&&Array.isArray(s.commandReports)&&s.commandReports.length<=40&&s.commandReports.every(r=>typeof r==='string'&&r.length<=1000)&&s.units.every(u=>(u.missionOrder===null||u.missionOrder===undefined||u.side==='us'&&['infantry','tank'].includes(u.type)&&missionTypes.includes(u.missionOrder.type)&&['cautious','balanced','aggressive'].includes(u.missionOrder.risk)&&typeof u.missionOrder.paused==='boolean'&&(['seize','defend'].includes(u.missionOrder.type)?Number.isInteger(u.missionOrder.objective)&&u.missionOrder.objective>=0&&u.missionOrder.objective<3:typeof u.missionOrder.target==='string'&&u.missionOrder.target.length<=80))&&(u.commandReport===undefined||typeof u.commandReport==='string'&&u.commandReport.length<=1000))}
 function assignMission(s,id,mission){const u=alive(s).find(v=>v.id===id&&v.side==='us'&&['infantry','tank'].includes(v.type));if(s.finished||!u)return 'Select an operational infantry or armor formation.';const candidate={...mission,paused:false};if(!commandValid({...s,units:s.units.map(v=>v.id===id?{...v,missionOrder:candidate}:v)}))return 'Choose a valid mission, objective, and risk policy.';if(['support','reserve'].includes(candidate.type)&&!alive(s).some(v=>v.id===candidate.target&&v.id!==id&&v.side==='us'&&v.type!=='hq'))return 'Choose another operational formation to support.';u.missionOrder=candidate;u.order=null;u.commandReport='Mission assigned; review intentions before resolving.';return null}
 function missionName(s,m){if(!m)return 'Direct control';return ({seize:'Seize ',defend:'Defend ',support:'Support ',reserve:'Reserve for '})[m.type]+(['seize','defend'].includes(m.type)?scenario(s).objectives[m.objective]?.name:s.units.find(u=>u.id===m.target)?.name||'lost formation')}
-function commandRoute(s,u,goal,risk){const q=[{x:u.x,y:u.y,cost:0,score:0,path:[]}],seen=new Set(),enemies=alive(s).filter(v=>v.side!==u.side),caution={cautious:2,balanced:.75,aggressive:.15}[risk];while(q.length){q.sort((a,b)=>a.score-b.score||a.cost-b.cost);const p=q.shift(),key=p.x+','+p.y;if(seen.has(key))continue;seen.add(key);if(p.x===goal.x&&p.y===goal.y)return p;if(p.cost>0&&enemyZone(s,p,u.side))continue;for(const n of neighbors(p,s)){if(!stepAllowed(s,u,p,n)||alive(s).some(v=>v.id!==u.id&&v.x===n.x&&v.y===n.y))continue;const cost=moveCost(s,u,p,n),danger=enemies.reduce((v,e)=>v+(dist(n,e)<=range(e)?caution*e.hp/10:0),0);q.push({...n,cost:p.cost+cost,score:p.score+cost+danger,path:[...p.path,n]})}}return null}
+function commandRoute(s,u,goal,risk){const q=new RouteQueue({x:u.x,y:u.y,cost:0,score:0,path:[]},(a,b)=>a.score-b.score||a.cost-b.cost),seen=new Set(),occupied=occupiedHexes(s,u),enemies=alive(s).filter(v=>v.side!==u.side),caution={cautious:2,balanced:.75,aggressive:.15}[risk];while(q.length){const p=q.shift(),key=p.x+','+p.y;if(seen.has(key))continue;seen.add(key);if(p.x===goal.x&&p.y===goal.y)return p;if(p.cost>0&&enemyZone(s,p,u.side))continue;for(const n of neighbors(p,s)){if(!stepAllowed(s,u,p,n)||occupied.has(n.x+','+n.y))continue;const cost=moveCost(s,u,p,n),danger=enemies.reduce((v,e)=>v+(dist(n,e)<=range(e)?caution*e.hp/10:0),0);q.push({...n,cost:p.cost+cost,score:p.score+cost+danger,path:[...p.path,n]})}}return null}
 function commandPlan(s){const out={proposals:[],requests:[]};if(!s.commandMode||s.finished)return out;const known={...s,units:s.units.filter(v=>v.side==='us'||!s.fog||spotted(s,v)).map(v=>({...v}))},enemies=alive(known).filter(v=>v.side==='de'),reserved=new Set(known.units.filter(v=>v.side==='us'&&v.order?.type==='move').map(v=>v.order.x+','+v.order.y)),gunsUsed=new Set();let airUsed=!!s.airTarget;const deliveries=logistics(known),ranks={Regiment:0,Division:1,Corps:2,Army:3};
 for(const u of alive(known).filter(v=>v.side==='us'&&v.missionOrder)){
  const m=u.missionOrder,stock=deliveries.rows.find(r=>r.id===u.id)?.stock??u.stock,ready={...u,stock},p={unit:u.id,mission:missionName(s,m),order:null,route:[],report:'',requiresSupport:false};out.proposals.push(p);
@@ -295,7 +337,7 @@ if(operational(s))operationalArrivals(s,events);
 if(s.commandMode){const standing=alive(s).filter(u=>u.side==='us'&&u.missionOrder&&!u.missionOrder.paused);for(const u of alive(s).filter(u=>u.side==='us'&&['infantry','tank'].includes(u.type)&&!before.units.some(v=>v.id===u.id))){const donors=standing.filter(v=>!['support','reserve'].includes(v.missionOrder.type)||v.missionOrder.target!==u.id).sort((a,b)=>dist(u,a)-dist(u,b));if(donors[0]&&!assignMission(s,u.id,donors[0].missionOrder)){u.commandReport='Reinforcement joins existing intent: '+missionName(s,u.missionOrder)+'.';events.push('COMMAND — '+u.name+': '+u.commandReport)}}}
 updateIntel(s);let c=scenario(s),held=s.owners.filter(x=>x==='us').length;if(!alive(s).some(u=>u.side==='us'&&u.type!=='hq')){s.finished=true;s.result='German victory — Allied forces eliminated.'}else if(!alive(s).some(u=>u.side==='de')||(c.mode!=='hold'&&held===3)){s.finished=true;s.result=c.nation+' victory — all objectives secured.'}else if(s.turn>=c.turns){s.finished=true;s.result=held===3?c.nation+' victory — all objectives held.':held>=2?'Limited '+c.nation+' victory — two objectives held.':'German victory — objectives denied.'}
 finishCommandReports(s);s.log=[`Turn ${s.turn} resolved.`,...events,...s.log].slice(0,120);s.reports.push(makeReport(s,before,s.turn));s.supplyReports.push(makeSupplyReport(s,before,s.turn));s.supplyReports=s.supplyReports.slice(-20);s.reports=s.reports.slice(-20);if(!s.finished)s.turn++;return s}
-function reachable(s,u,allowance=budget(u)){let queue=[{x:u.x,y:u.y,cost:0}],best=new Map();while(queue.length){queue.sort((a,b)=>a.cost-b.cost);let p=queue.shift(),key=p.x+','+p.y;if(best.has(key))continue;best.set(key,p.cost);if(p.cost>0&&enemyZone(s,p,u.side))continue;for(let n of movementNeighbors(s,u,p)){let cost=p.cost+moveCost(s,u,p,n);if(stepAllowed(s,u,p,n)&&cost<=allowance&&!alive(s).some(v=>v.id!==u.id&&v.x===n.x&&v.y===n.y))queue.push({...n,cost})}}return best}
+function reachable(s,u,allowance=budget(u)){let queue=new RouteQueue({x:u.x,y:u.y,cost:0},(a,b)=>a.cost-b.cost),best=new Map(),occupied=occupiedHexes(s,u);while(queue.length){let p=queue.shift(),key=p.x+','+p.y;if(best.has(key))continue;best.set(key,p.cost);if(p.cost>0&&enemyZone(s,p,u.side))continue;for(let n of movementNeighbors(s,u,p)){let cost=p.cost+moveCost(s,u,p,n);if(stepAllowed(s,u,p,n)&&cost<=allowance&&!occupied.has(n.x+','+n.y))queue.push({...n,cost})}}return best}
 function makeReport(s,before=null,turn=0){let c=scenario(s),friendly=s.units.filter(u=>u.side==='us'),active=friendly.filter(u=>u.hp>0),seen=contacts(s),stale=s.intel.filter(r=>!seen.some(u=>u.id===r.id)),known=s.fog?s.intelObjectives:s.owners,loss=before?before.units.filter(u=>u.side==='us').reduce((n,u)=>n+Math.max(0,u.hp-(s.units.find(v=>v.id===u.id)?.hp??0)),0):0,arrived=before?active.filter(u=>!before.units.some(v=>v.id===u.id)):[];
 let minutes=c.start+turn*30,time=Math.floor(minutes/60).toString().padStart(2,'0')+(minutes%60).toString().padStart(2,'0');let lines=['SITUATION — '+c.date+', '+time+' hours. '+(turn?'Turn '+turn+' completed.':'Opening briefing.'),c.brief,'OBJECTIVES — '+c.objectives.map((o,i)=>o.name+': '+(known[i]==='us'?c.nation:known[i]==='de'?'German':'unconfirmed / neutral')).join('; ')+'.','FRIENDLY FORCES — '+active.length+' operational units; '+active.reduce((n,u)=>n+u.hp,0)+' total strength points. '+(before?loss+' net strength points lost this turn; '+friendly.filter(u=>u.hp===0).length+' units eliminated in battle.':'Opening deployment.'),'SUPPLY — '+supplyCapacity(s)+' delivery points forecast per turn (base '+c.supply+' plus regimental distribution). '+active.filter(u=>!supply(s,u)).length+' units with cut routes; '+active.filter(u=>u.stock<2).length+' units below 2/3 reserves after consumption.','AIR SUPPORT — '+s.airRemaining+' of '+c.air+' missions remain.','WEATHER — '+(s.weather||'clear').toUpperCase()+'; current observation range '+({clear:'normal',rain:'2 hexes',fog:'1 hex',night:'1 hex'}[s.weather||'clear'])+'.', 'INTELLIGENCE — '+seen.length+' confirmed current contacts; '+stale.length+' last-known positions. '+(s.fog?'Fog of war active. No total enemy strength estimate.':'Fog of war off; map shows all enemies. Intelligence still records troop sightings.'),'REINFORCEMENTS — '+(arrived.length?arrived.map(u=>u.name).join(', ')+' arrived.':s.turn<c.reinforce?'Expected after turn '+c.reinforce+' if entry hexes are free.':'No arrivals this turn.')];
 lines.push('HEADQUARTERS — '+headquarters(s).map(h=>h.echelon+': '+(h.hp<=0?'eliminated':h.hp<=3?'disrupted':'hex '+(h.x+1)+', '+(h.y+1))).join('; ')+'. '+active.filter(u=>u.type!=='hq'&&!commandStatus(s,u).ok).length+' formations outside the full Army command chain. '+(s.advancedRules?'Reserve support requires its issuing HQ chain.':'Command restrictions activate with Advanced Rules.'));

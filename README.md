@@ -3,7 +3,9 @@
 A free, independent, turn-based World War II operational command game. Game design and development lead: Larry Kuzniak. Development assistance: OpenAI ChatGPT/Codex.
 
 ## Current supplied version
-Command edition **0.20**, deployed October 19, 2026. Includes weather and visibility settings, last-known contact retention, and delegated disengagement. All 21 supplied automated checks passed; actual iPad testing remains to be done.
+Command edition **0.20.1**, deployed October 19, 2026. Includes weather and visibility settings, last-known contact retention, and delegated disengagement. All 21 supplied automated checks passed; actual iPad testing remains to be done.
+
+Performance review and timing results: see `PERFORMANCE-LOG.md`.
 
 ## Windows
 See `READ-ME-FIRST.txt` for instructions. On a Windows 10/11 personal computer, launch `Start-Utah-Command.cmd` from this folder after extracting all files. The launcher uses PowerShell and a local browser server; it does not install an EXE.
