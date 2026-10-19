@@ -1,0 +1,12 @@
+[
+  {
+    "test": "command-services-check.cjs",
+    "status": 0,
+    "output": "PASS: legacy migration preserves abstract rules and valid state\nPASS: pure previews and finite dispatch/stock conservation\nPASS: supply points suspend while relocating and recover stocks\nPASS: hidden supply blockers affect execution, not reported preview\nPASS: patrol launch costs, no teleport, recall and eventual rejoin\nPASS: patrol observations arrive late and retain original dates\nPASS: staff previews are pure, scoped, and dismissals retain orders\nPASS: malformed feature saves rejected\nPASS: 48 complete feature games: deterministic save/load, bounded stocks, valid services\n9 feature groups passed.\n"
+  },
+  {
+    "test": "command-desk-ui-check.cjs",
+    "status": 0,
+    "output": "PASS: HTML IDs, numbered counters, S/G staff views, review/cancel/apply, supply point and patrol controls, persistent activity, save/load validation, complete UI battle with services installed.\n"
+  }
+]

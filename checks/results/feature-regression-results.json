@@ -1,0 +1,107 @@
+[
+  {
+    "test": "advanced-check.cjs",
+    "status": 0,
+    "detail": "PASS: optional/legacy rules, suppression readiness/recovery, bombardment phase, ammunition exhaustion/replenishment, smoke/expiry, defensive fire/retained ammunition, two-turn preparation/bonus, toggle cleanup and complete advanced scenarios.\nPASS: advanced toggle, mission selectors, smoke hex targeting/render, deliberate preparation targeting and save/import validity.\n"
+  },
+  {
+    "test": "ai-check.cjs",
+    "status": 0,
+    "detail": "PASS: AI order privacy, fog fairness, withdrawal, objective defense, and 48 complete scenario games.\n"
+  },
+  {
+    "test": "air-check.cjs",
+    "status": 0,
+    "detail": "PASS: air damage, mission consumption/limit, order clearing, unavailable target, legacy save migration, destruction before ground fire.\n"
+  },
+  {
+    "test": "attachments-check.cjs",
+    "status": 0,
+    "detail": "PASS: finite pools/caps, attach/reassign/release, legacy migration, import structure, actual combat bonuses/report, inherited fire/range/supply forecast, explicit orders, medical recovery, recon readiness, cut-route limits, lost hosts, and full games in all scenarios.\nPASS: attachment dialog, assignment controls, selected unit/map indicators, persisted assignments and release.\n"
+  },
+  {
+    "test": "check.cjs",
+    "status": 0,
+    "detail": "PASS: movement, fire/return fire, supply, reinforcements, victory, impassable sea, hex distance, 15 complete playthroughs.\n"
+  },
+  {
+    "test": "command-campaign-check.cjs",
+    "status": 0,
+    "detail": "PASS: 48 complete Command-mode scenario games, deterministic save/load plans, pure previews, valid saves/reports, legal positions and no stacking.\nutah: 6/6 Allied wins with simple automatic mission allocation.\ninland: 1/6 Allied wins with simple automatic mission allocation.\ncounterattack: 1/6 Allied wins with simple automatic mission allocation.\njuno: 0/6 Allied wins with simple automatic mission allocation.\nomaha: 1/6 Allied wins with simple automatic mission allocation.\nairborne: 6/6 Allied wins with simple automatic mission allocation.\ncarentan: 0/6 Allied wins with simple automatic mission allocation.\nmortain: 5/6 Allied wins with simple automatic mission allocation.\n"
+  },
+  {
+    "test": "command-check.cjs",
+    "status": 0,
+    "detail": "PASS: legacy migration/validation, persistent missions, pure previews, artillery/air approvals and real resource use, organic delegation, command failures, manual overrides/pause, fog privacy, defense and lost support targets.\nPASS: attached guns never need fresh permission; attached engineer combat support remains automatic; mission engineer repairs require no extra permission.\nPASS: attached field guns autonomously follow their host, pure route forecasts, and explicit battery override.\nPASS: a battalion cannot borrow a field battery already attached to another host.\n"
+  },
+  {
+    "test": "command-ui-check.cjs",
+    "status": 0,
+    "detail": "PASS: command panel, bulk mission assignment, route display, pause/resume/rest, preview cancel without state/save mutation, approve and execute once, attached-support no-popup execution, air resources, save/schema validation and complete walkthrough.\nPASS: mission-save import, canceled replacement, malformed save rejection, session rollback after import, and no post-exit command writes.\n"
+  },
+  {
+    "test": "distribution-check.cjs",
+    "status": 0,
+    "detail": "PASS: native JavaScript storage, import, export, print bridge and bundled help assets. Swift compilation/device behavior remain unverified.\n"
+  },
+  {
+    "test": "fog-check.cjs",
+    "status": 0,
+    "detail": "PASS: near/far spotting, initial intelligence, hidden air target retains mission, fog-off targeting, stale contacts/search clearing, and dispatch redaction.\n"
+  },
+  {
+    "test": "hq-exit-check.cjs",
+    "status": 0,
+    "detail": "PASS: HQ deployment/migration, no overlaps, range/chain, relocation/disruption/pinning, echelon-specific support, direct reporting, staff logistics, movement, no objective capture and no HQ-only survival.\nPASS: HQ dialog/counter inspection/attack lock/save validity; exit cancel, rollback of autosaves in multiple scenarios, initial saves/view preserved, no post-exit writes, resume reload and new-session cleanup.\nPASS: exit new-game chooser cancel, overwrite cancellation, fresh scenario selection, resumed autosave, and repeated exit rollback.\n"
+  },
+  {
+    "test": "logistics-check.cjs",
+    "status": 0,
+    "detail": "PASS: manual rationing, pool/reserve limits, source-sector blockages, route preferences, real dispatch/report, direct supply UI, controls/save migration, validation, fog, and battle toggle.\n"
+  },
+  {
+    "test": "map-focus-check.cjs",
+    "status": 0,
+    "detail": "PASS: compact holding cards, no rear grid/counters on tactical map, fullscreen/normal toggle without game mutation, details restoration, menu and Escape, visible action handlers, staged HQ selection/deployment/withdrawal, resolve/air controls and responsive CSS contracts.\nPASS: Fit map and viewport toggle reset zoom/pan, illustration matches tactical bounds, and left-aligned fitting.\n"
+  },
+  {
+    "test": "operations-builder-check.cjs",
+    "status": 0,
+    "detail": "PASS: custom schema/deployment, LOS, roads, bridges/fords/engineers, ZOC/pinning, reserve counterattack, regimental supply, deterministic forecasts, Utah waves/congestion, and complete operational games in eight scenarios.\nPASS: builder open/blank/terrain/unit placement/save/play, portable design embedded in saves, operational toggle and custom battle save/load validation.\nPASS: a running custom battle keeps its embedded terrain when the design registry changes.\n"
+  },
+  {
+    "test": "pwa-check.cjs",
+    "status": 0,
+    "detail": "PASS: install cache, offline-ready signal, offline navigation/assets under a repository subpath, and API exclusion.\n"
+  },
+  {
+    "test": "rear-hq-check.cjs",
+    "status": 0,
+    "detail": "PASS: rear HQ echelons in all scenarios, collision-free placement, one-time saved-game correction, field units/combat state preserved, subsequent moves retained, HQ travel between rear and beach, field-unit exclusion and regimental support.\nPASS: every HQ echelon deploys from holding in all eight scenarios, with Advanced Rules on and off.\n"
+  },
+  {
+    "test": "scenarios-check.cjs",
+    "status": 0,
+    "detail": "PASS scenario: utah\nPASS scenario: inland\nPASS scenario: counterattack\nPASS scenario: juno\nPASS scenario: omaha\nPASS scenario: airborne\nPASS scenario: carentan\nPASS scenario: mortain\nPASS: 24 complete scenario playthroughs, defense deadline, aggressive reserves, report history/fog safety, and legacy migration.\n"
+  },
+  {
+    "test": "supply-check.cjs",
+    "status": 0,
+    "detail": "PASS: priority reallocations, limited delivery pool, no preview mutation, isolation, readiness penalties, consumption, rest deliveries, and save migration.\n"
+  },
+  {
+    "test": "terrain-check.cjs",
+    "status": 0,
+    "detail": "PASS: all scenario terrain art, exact hit targets/terrain labels, deterministic rendering, unchanged saves, main/supply offline assets.\n"
+  },
+  {
+    "test": "ui-check.cjs",
+    "status": 0,
+    "detail": "PASS: UI startup/render, turn button, selection/orders, cancel, local save, import validation.\nPASS: fog toggle, hidden counter rendering, pending order cleanup, and preference persistence.\nPASS: all scenario UI renders, Canadian color, report dialogs/history, per-scenario save slots, resume listing, and report preference.\nPASS: selected armor halo/label/enlargement, dim layer ordering, roster and supply selection, and clear selection.\nPASS: overlapping save rejection, completed battle inspection, and objective tap-through markup.\nPASS: select artillery, Bombard mode, visible target markers, queued shot, resolve damage, combat report.\nPASS: full legal movement overlay for infantry/armor/artillery/HQs, normal and advanced rules, terrain exclusion, dim-layer visibility, clear selection and finished battle cleanup.\n"
+  },
+  {
+    "test": "visibility-check.cjs",
+    "status": 0,
+    "detail": "PASS: weather sight caps, stale-location retention, clearing searched empty locations, autonomous disengagement.\n"
+  }
+]

@@ -121,10 +121,10 @@ const SupplyUI = {
       else if (r.shortfall) warnings.push(`${v.name}: ${r.shortfall} requested points unmet (${r.reason.toLowerCase()}).`);
       if (r.stock < r.use) warnings.push(`${v.name}: reserves cannot cover planned consumption; firepower and movement are reduced this turn.`);
     }
-    if (plan.unused) warnings.push(`${plan.unused} delivery points are unassigned and will expire this turn.`);
+    if (plan.unused) warnings.push(`${plan.unused} delivery points are unassigned; unused transport expires${s.forwardSupplyEnabled?", depot stocks remain":""}.`);
     if (totalUse > plan.capacity) warnings.push(`Consumption exceeds incoming supply by ${totalUse-plan.capacity}. You are drawing down reserves; consider resting tanks or artillery.`);
     $('logistics-warnings').innerHTML = warnings.length ? warnings.map(t => `<p class="supply-warning">${esc(t)}</p>`).join('') : '<p class="supply-clear">All requests are covered. Review the after-turn reserves before advancing.</p>';
     const last = s.lastSupply;
-    $('logistics-last').innerHTML = last ? `<p><strong>Turn ${last.turn}</strong> · ${last.delivered} delivered / ${last.delivered+last.unused} available.</p><p>${last.unused} expired · ${last.blocked} cut routes.</p>` : '<p>No deliveries dispatched yet. Your first plan takes effect when you resolve the turn.</p>';
+    $('logistics-last').innerHTML = last ? `<p><strong>Turn ${last.turn}</strong> · ${last.delivered} delivered / ${last.delivered+last.unused} available.</p><p>${last.unused} ${s.forwardSupplyEnabled?"transport unused":"expired"} · ${last.blocked} cut routes.</p>` : '<p>No deliveries dispatched yet. Your first plan takes effect when you resolve the turn.</p>';
   }
 };
