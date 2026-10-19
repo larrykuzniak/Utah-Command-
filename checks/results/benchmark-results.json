@@ -1,0 +1,31 @@
+{
+  "runtime": "v24.19.0",
+  "platform": "linux",
+  "method": "median of 7 alternating batches; 8 scenarios, standard and operational rules",
+  "times": {
+    "movement routes": {
+      "callsPerSample": 320,
+      "currentMs": 52.831560999999965,
+      "baselineMs": 118.45127400000001,
+      "speedup": 2.2420551609292803
+    },
+    "supply forecast": {
+      "callsPerSample": 320,
+      "currentMs": 38.60426100000018,
+      "baselineMs": 48.064881000000014,
+      "speedup": 1.24506672980995
+    },
+    "mission planning": {
+      "callsPerSample": 320,
+      "currentMs": 373.5637259999994,
+      "baselineMs": 582.1856520000001,
+      "speedup": 1.5584640892033534
+    },
+    "movement overlay": {
+      "callsPerSample": 320,
+      "currentMs": 16.27762299999995,
+      "baselineMs": 20.25002400000085,
+      "speedup": 1.2440406071575016
+    }
+  }
+}
