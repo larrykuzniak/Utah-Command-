@@ -1,0 +1,23 @@
+UTAH COMMAND
+Developer, game designer, and project lead: Larry Kuzniak
+Development assistance: OpenAI ChatGPT/Codex
+AI-assisted map illustration. No Apple or OpenAI endorsement is implied.
+Copyright 2026 Larry Kuzniak, to the extent rights apply.
+
+The game is offered free. Larry intends to keep it free and does not intend
+to sell it. You may share the complete unmodified package at no charge with
+these credits, documentation, and notices intact. Do not represent it as your
+own creation or sell copies under this permission. Source is supplied for
+building and maintaining this app; this notice is not an open-source license.
+Any third-party rights remain with their respective owners.
+
+This is an independent game inspired by classic operational wargames. It is
+not affiliated with the owners of V for Victory and is not an official port.
+Maps, forces, and mechanics are illustrative. No original proprietary game
+code, manuals, or assets are intended to be included. Verify final asset rights
+before public distribution; free availability does not remove that obligation.
+
+Bug reports and suggestions: larrykuzniak@mac.com
+Include scenario, turn, rules settings, expected and actual behavior, device
+and OS, and reproduction steps. Save files and screenshots can help.
+Support is offered as available; no warranty or promise of updates is made.

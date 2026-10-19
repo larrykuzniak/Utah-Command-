@@ -1,0 +1,72 @@
+UTAH COMMAND - WINDOWS PORTABLE BETA 0.19 / launcher 1
+Prepared October 17, 2026 for Larry Kuzniak
+
+START ON YOUR LAPTOP
+1. Download the ZIP to your Windows laptop.
+2. Right-click the ZIP and choose Extract All. Choose a folder such as
+   Documents\Utah Command. Open the EXTRACTED folder.
+3. Double-click Start-Utah-Command.cmd (may appear as Start-Utah-Command).
+4. The launcher opens Edge in a game window. If Edge is not found, it opens
+   your default browser. Keep the launcher console window open while playing.
+5. If the game window does not open, paste http://127.0.0.1:18759/ into Edge.
+6. To quit, close the game window and then close the launcher console window.
+
+This is a portable browser-based Windows edition, not a compiled EXE installer.
+It uses Windows PowerShell 5.1 and a modern browser, intended for Windows 10/11.
+It needs no Python, Node, administrator rights, ChatGPT account, hosting,
+subscription, or internet connection. No runtime is downloaded. The launcher
+serves bundled files only to this computer, on a fixed loopback address.
+The command uses a process-only script execution-policy setting; it does not
+change the machine's saved policy. Managed computers may block scripts; use
+an authorized personal laptop. Do not change organizational security policy.
+
+YOUR FIRST TEST
+- Choose Utah / Beach Exits and First game. Start with Advanced Rules and
+  Operational depth off. Select a blue unit; try Move and Attack.
+- Test artillery ranged fire, Resolve turn, situation reports and AI response.
+- Try Command missions, support attachments, supply routes and other scenarios.
+- Close and reopen: confirm your battle resumes. Try without internet too.
+- Export a save, then import that file. Browser downloads usually go to Downloads.
+- Try resizing/maximizing, mouse wheel zoom, and the full-screen map controls.
+- Tell Larry what works and what fails. Use BETA-FEEDBACK.txt.
+
+SAVES AND UPDATES
+Progress saves in the browser profile used by the game. Reopen with the same
+browser/profile and local address. Export save before clearing browser data,
+changing computers, or updating the package. Do not use InPrivate/incognito
+for progress you want to keep. Only run one launcher at a time. If port 18759
+is occupied, close the old launcher and retry; no alternate save address is
+silently chosen. Moving the folder keeps the same local address. Save migration
+across future game versions still needs testing. Close game and launcher before
+replacing files. Safari/iPad saves can be transferred manually by export/import.
+A stale browser service worker is removed for this dedicated Windows address.
+
+GUIDE AND SOURCE
+Utah_Command_Guide.pdf is included. It describes the shared game; its iPad
+installation and Apple submission chapters do not apply to this Windows launcher.
+Use these Windows launch instructions instead. game/ holds the readable game
+source and all required assets. Launch-UtahCommand.ps1 and the CMD launcher
+are also included as readable source. Apple submission remains PAUSED.
+
+TROUBLESHOOTING
+- Always extract the whole ZIP. Do not run from the ZIP preview.
+- Missing files: extract a fresh complete copy into a new folder.
+- Blank game: send a screenshot and any error text to Larry.
+- No window: leave launcher open and open the local address above in Edge.
+- Port busy: close any previous launcher. Do not run multiple copies at once.
+- Security warning or organization block: report the exact message to Larry;
+  do not disable antivirus or organizational protections to test this beta.
+
+VALIDATION
+The unchanged game passed engine, UI and command checks, including 15 full
+engine playthroughs. Package links, assets and ZIP checksums were checked.
+Windows PowerShell launch, Edge app-window behavior, Windows printing,
+export/import and save persistence have NOT been run on Windows here.
+This is the first Windows beta for your laptop test, not a signed release.
+
+CREDITS AND CONTACT
+Developer, game designer and project lead: Larry Kuzniak
+Development assistance: OpenAI ChatGPT/Codex
+Free game; Larry intends to keep it free. No ads or in-app purchases.
+Reports and suggestions: larrykuzniak@mac.com
+See DISTRIBUTION-NOTICE.txt for sharing terms and credits.

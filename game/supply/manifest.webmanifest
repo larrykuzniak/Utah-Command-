@@ -1,0 +1,25 @@
+{
+  "name": "Utah Supply Command",
+  "short_name": "Supply Command",
+  "start_url": "./#supply",
+  "display": "standalone",
+  "background_color": "#f4f1e7",
+  "theme_color": "#202b26",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "id": "./",
+  "scope": "./",
+  "description": "Original WWII hex-and-counter strategy game with four Normandy scenarios and offline play."
+}

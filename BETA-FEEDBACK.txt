@@ -1,0 +1,15 @@
+UTAH COMMAND WINDOWS BETA FEEDBACK
+Email: larrykuzniak@mac.com
+
+Windows version:
+Browser/version:
+Did the launcher open the game?
+Scenario/turn/rules:
+Steps to reproduce:
+Expected behavior:
+Actual behavior:
+Did saves survive closing and reopening?
+Did offline play work?
+Save export/import result:
+Suggestions:
+Screenshot/exported save (optional):
