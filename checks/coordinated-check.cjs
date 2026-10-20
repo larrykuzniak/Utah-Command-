@@ -1,0 +1,9 @@
+const assert=require('node:assert/strict'),G=require('../game/engine.js');require('../game/command-services.js')(G);
+function setup(){let s=G.fresh();s.fog=false;s.commandLevel='Regiment';s.units=s.units.filter(u=>['a','b','f'].includes(u.id)||u.type==='hq');Object.assign(s.units.find(u=>u.id==='a'),{x:6,y:2});Object.assign(s.units.find(u=>u.id==='b'),{x:5,y:3});Object.assign(s.units.find(u=>u.id==='f'),{x:5,y:2});Object.assign(s.units.find(u=>u.id==='hq-regiment'),{x:7,y:3});assert.equal(G.assignCoordinatedAttack(s,'a',['b'],0,'balanced'),null);return s}
+let s=setup(),before=JSON.stringify(s),p=G.commandPlan(s);assert.equal(JSON.stringify(s),before);for(const id of ['a','b'])assert.equal(p.proposals.find(p=>p.unit===id).order?.target,'f');assert(G.commandValid(s));
+s.units.find(u=>u.id==='b').missionOrder.paused=true;p=G.commandPlan(s);assert.equal(p.proposals.find(p=>p.unit==='a').order,null);assert(p.proposals.find(p=>p.unit==='a').report.includes('not ready'));
+s=setup();s.units.find(u=>u.id==='b').x=8;p=G.commandPlan(s);assert.equal(p.proposals.find(p=>p.unit==='a').order,null);assert(p.proposals.find(p=>p.unit==='b').order?.type==='move');
+s=setup();let snapshot=JSON.stringify(s);assert(G.assignCoordinatedAttack(s,'a',['a'],0));assert.equal(JSON.stringify(s),snapshot);assert(G.assignCoordinatedAttack(s,'a',null,0));
+s=setup();s.units.find(u=>u.id==='b').order={type:'defend'};G.applyCommandPlan(s);assert.equal(s.units.find(u=>u.id==='b').order.type,'defend');assert.equal(s.units.find(u=>u.id==='a').order,null);
+s=G.fresh();let a=s.units.find(u=>u.id==='a');a.order={type:'defend'};const cover=G.defenseCover(s,a);a.order=null;assert.equal(cover,G.defenseCover(s,a)+1);a.order={type:'defend'};G.resolve(s);assert.equal(a.order.type,'defend');assert(G.advancedValid(s));
+console.log('PASS: coordinated targets, waits, movement, pure previews, atomic validation, direct overrides, persistent defense.');
