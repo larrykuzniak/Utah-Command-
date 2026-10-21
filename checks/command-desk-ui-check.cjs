@@ -6,6 +6,15 @@ const root=node();root.innerHTML=html;const ids=[...html.matchAll(/\bid="([^"]+)
 // Register the tabs with their child controls, as a browser does.
 elements['desk-tabs'].innerHTML=html.match(/<nav id="desk-tabs"[^>]*>([\s\S]*?)<\/nav>/)[1];
 const storage={},ctx={console,window:{addEventListener(){}},document:{getElementById(id){return elements[id]??=(node())},querySelector(){return null}},localStorage:{getItem:k=>storage[k]??null,setItem:(k,v)=>storage[k]=v,removeItem:k=>delete storage[k]},confirm:()=>true,alert(){},setTimeout,Blob,URL};vm.createContext(ctx);const run=code=>vm.runInContext(code,ctx),load=file=>run(fs.readFileSync(dir+'/'+file,'utf8'));load('engine.js');ctx.Game=ctx.window.Game;load('command-services.js');load('logistics-ui.js');load('terrain.js');ctx.TerrainMap=ctx.window.TerrainMap;load('app.js');load('command-desk.js');
+// Condition warnings must survive loss of the map counter.
+const conditionOpening=run('JSON.stringify(s)');
+run("Object.assign(s.units.find(u=>u.id==='d'),{hp:3,stock:0});render()");
+assert(elements.map.innerHTML.includes('class="condition-border"'));
+assert(elements.map.innerHTML.includes('data-status="red"'));
+assert(elements['map-condition-alerts'].innerHTML.includes('70th Tank det.: strength 3/10 CRITICAL'));
+run("s.units.find(u=>u.id==='d').hp=0;render()");
+assert(elements['map-condition-alerts'].innerHTML.includes('70th Tank det.: ELIMINATED'));
+run('s='+conditionOpening+';render()');
 if(process.env.COMMAND_QA_SVG)fs.writeFileSync(process.env.COMMAND_QA_SVG,'<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 750 650" width="750" height="650">'+elements.map.innerHTML+'</svg>');
 assert(elements.map.innerHTML.includes('class="unit-identifier"'));for(const label of ['1/8','2/8','3/8','70 TK','29 FA'])assert(elements.map.innerHTML.includes('>'+label+'</text>'),label);
 elements['command-desk-open'].click();assert(elements['command-desk-dialog'].open);assert(elements['desk-content'].innerHTML.includes('G4 · Logistics'));elements['desk-hq'].value='hq-regiment';elements['desk-hq'].onchange();assert(elements['desk-content'].innerHTML.includes('S2 · Intelligence'));

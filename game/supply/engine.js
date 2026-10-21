@@ -285,7 +285,20 @@ if(operational(s)&&!suppressionHits.has(u.id))u.cohesion=Math.min(100,u.cohesion
 u.stock=Math.max(0,u.stock-consumption(u));u.order=null;u.reacted=false;u.reserveCommitted=false}
 releaseLostAttachments(s,events);
 scenario(s).objectives.forEach((o,i)=>{let u=alive(s).find(u=>u.type!=='hq'&&u.x===o.x&&u.y===o.y);if(u)s.owners[i]=u.side});
-if(s.turn===scenario(s).reinforce&&!(operational(s)&&s.utahEvents&&scenario(s).id==='utah')){for(let [id,name,y] of [['j','Follow-up infantry',1],['k','Beach reserve',8]])if(!alive(s).some(u=>u.x===8&&u.y===y)){let reinforcement=unit(id,scenario(s).faction==='ca'?'Canadian '+name.toLowerCase():name,'us',8,y);reinforcement.nation=scenario(s).faction;s.units.push(reinforcement);events.push(reinforcement.name+' arrives at the eastern supply edge.')}}
+// Missing scheduled units remain pending, including in saves past their due turn.
+// Check all units by ID so eliminated reinforcements never spawn again.
+if(s.turn>=scenario(s).reinforce&&!(operational(s)&&s.utahEvents&&scenario(s).id==='utah')){
+ for(const [id,baseName,y] of [['j','Follow-up infantry',1],['k','Beach reserve',8]]){
+  if(s.units.some(u=>u.id===id))continue;
+  const name=scenario(s).faction==='ca'?'Canadian '+baseName.toLowerCase():baseName;
+  if(alive(s).some(u=>u.x===8&&u.y===y)){
+   events.push('REINFORCEMENT DELAY — '+name+' waiting: entry hex 9, '+(y+1)+' is occupied. Will retry next turn.');
+   continue;
+  }
+  const reinforcement=unit(id,name,'us',8,y);reinforcement.nation=scenario(s).faction;
+  s.units.push(reinforcement);events.push('REINFORCEMENT — '+name+' arrives at the eastern supply edge, hex 9, '+(y+1)+'.');
+ }
+}
 if(operational(s))operationalArrivals(s,events);
 if(s.commandMode){const standing=alive(s).filter(u=>u.side==='us'&&u.missionOrder&&!u.missionOrder.paused);for(const u of alive(s).filter(u=>u.side==='us'&&['infantry','tank'].includes(u.type)&&!before.units.some(v=>v.id===u.id))){const donors=standing.filter(v=>!['support','reserve'].includes(v.missionOrder.type)||v.missionOrder.target!==u.id).sort((a,b)=>dist(u,a)-dist(u,b));if(donors[0]&&!assignMission(s,u.id,donors[0].missionOrder)){u.commandReport='Reinforcement joins existing intent: '+missionName(s,u.missionOrder)+'.';events.push('COMMAND — '+u.name+': '+u.commandReport)}}}
 updateIntel(s);let c=scenario(s),held=s.owners.filter(x=>x==='us').length;if(!alive(s).some(u=>u.side==='us'&&u.type!=='hq')){s.finished=true;s.result='German victory — Allied forces eliminated.'}else if(!alive(s).some(u=>u.side==='de')||(c.mode!=='hold'&&held===3)){s.finished=true;s.result=c.nation+' victory — all objectives secured.'}else if(s.turn>=c.turns){s.finished=true;s.result=held===3?c.nation+' victory — all objectives held.':held>=2?'Limited '+c.nation+' victory — two objectives held.':'German victory — objectives denied.'}
