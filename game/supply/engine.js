@@ -49,6 +49,7 @@ if(hostId!==null&&!host)return 'Choose a living Allied formation.';
 const item=field?s.units.find(u=>u.id===id&&u.side==='us'&&u.hp>0&&['tank','artillery'].includes(u.type)):s.supportAssets.find(a=>a.id===id);
 if(!item)return 'Support unit unavailable.';
 const key=field?'attachedTo':'assignedTo';if(item[key]===hostId)return null;
+if(hostId!==null&&item[key])return 'Already assigned to '+(s.units.find(u=>u.id===item[key])?.name||'another formation')+'. Release it from that formation before attaching elsewhere.';
 if(host&&field&&host.type!=='infantry')return 'Field tanks and artillery attach to infantry formations.';
 if(host&&(field?fieldAttachments(s,host):attachments(s,host)).length>=2)return 'Release an attachment first (two per formation in each pool).';
 item[key]=hostId;if(field&&host)item.commandId=host.commandId;

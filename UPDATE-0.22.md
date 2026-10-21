@@ -26,3 +26,7 @@ Friendly map counters carry two small labeled condition dots: S for strength and
 Scheduled eastern-edge reinforcements now wait when their entry hex is occupied, announce the delay and exact hex in dispatches, and retry on every subsequent turn. Each unit arrives once; destroyed reinforcements do not return. Existing saves beyond the arrival turn recover missing reinforcements when the entry clears. Applies to both standard and Supply editions; operational Utah landing waves keep their existing arrival rules.
 
 Reduced-strength units now have a yellow square around the counter (4–6 strength); critical-strength units have a red square (1–3 strength). A single larger L dot shows supply: green at 2–3 reserves with an open reported route, yellow at 1 reserve or a cut reported route, red at zero. A persistent notice above the map names reduced/critical units, low/empty reserves, cut reported routes, and eliminated formations, including in full-screen mode. The separate Supply edition now also has condition lights and notices. These warnings describe current condition, not predicted incoming combat damage.
+
+## 0.22.3 — exclusive support assignments
+
+Support already assigned to another formation is grayed out and labeled Assigned elsewhere, with its current host named. Only the owning formation can release it through the attachment desk. Transfers require release before attaching to a new host; the engine also rejects direct reassignment. Applies to reserve and on-map support in both editions.

@@ -15,6 +15,17 @@ assert(elements['map-condition-alerts'].innerHTML.includes('70th Tank det.: stre
 run("s.units.find(u=>u.id==='d').hp=0;render()");
 assert(elements['map-condition-alerts'].innerHTML.includes('70th Tank det.: ELIMINATED'));
 run('s='+conditionOpening+';render()');
+// An asset assigned to armor cannot be offered to a rifle battalion.
+run("G.assignAttachment(s,G.supportCatalog[0].id,'d');selected='a';render()");
+const locked=elements['attachment-content'].querySelectorAll('[data-attach]').find(b=>b.dataset.attach===run('G.supportCatalog[0].id'));
+assert(locked.disabled);assert(elements['attachment-content'].innerHTML.includes('attachment-unavailable'));
+assert(elements['attachment-content'].innerHTML.includes('Assigned to 70th Tank det.'));
+assert(!elements['attachment-content'].querySelectorAll('[data-release]').some(b=>b.dataset.release===locked.dataset.attach));
+run("selected='d';render()");assert(elements['attachment-content'].querySelectorAll('[data-release]').some(b=>b.dataset.release===locked.dataset.attach));
+run("G.assignAttachment(s,G.supportCatalog[0].id,null);selected='a';render()");
+assert(!elements['attachment-content'].querySelectorAll('[data-attach]').find(b=>b.dataset.attach===locked.dataset.attach).disabled);
+run('s='+conditionOpening+';selected=null;render()');
+
 if(process.env.COMMAND_QA_SVG)fs.writeFileSync(process.env.COMMAND_QA_SVG,'<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 750 650" width="750" height="650">'+elements.map.innerHTML+'</svg>');
 assert(elements.map.innerHTML.includes('class="unit-identifier"'));for(const label of ['1/8','2/8','3/8','70 TK','29 FA'])assert(elements.map.innerHTML.includes('>'+label+'</text>'),label);
 elements['command-desk-open'].click();assert(elements['command-desk-dialog'].open);assert(elements['desk-content'].innerHTML.includes('G4 · Logistics'));elements['desk-hq'].value='hq-regiment';elements['desk-hq'].onchange();assert(elements['desk-content'].innerHTML.includes('S2 · Intelligence'));
