@@ -16,3 +16,7 @@ Validation: existing 48-game command services suite, command desk UI integration
 - Existing 0.21 activity log, supply points, recon patrols, staff recommendations, and counter identifiers remain included.
 
 Added validation covers coordination readiness and holds, common targets, direct overrides, invalid assignments, persistent defense, actual UI controls, and save validation. UI checks run in a simulated DOM; physical iPad touch/layout testing remains outstanding.
+
+## 0.22.1 — strength and supply at a glance
+
+Friendly map counters carry two small labeled condition dots: S for strength and L for logistics/supply. Strength is green at 7–10, yellow at 4–6, red below 4. Supply is green at 2–3 reserves with an open last reported route, yellow at 1 reserve or a cut last reported route, and red at zero. These show current friendly reports, excluding planned deliveries. Selecting a unit provides exact strength, reserve figures, and an explanation. Enemy supply is not exposed. The offline cache advances to receive the changed shell.
