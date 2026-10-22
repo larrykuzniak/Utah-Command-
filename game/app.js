@@ -224,5 +224,42 @@ function renderTour(){document.querySelectorAll?.('.tour-highlight').forEach(el=
 function closeTour(){$('first-game-tour').hidden=true;document.querySelectorAll?.('.tour-highlight').forEach(el=>el.classList.remove?.('tour-highlight'))}
 $('tour-open').onclick=()=>{setMapFocus(false);tourStep=0;renderTour()};$('tour-close').onclick=closeTour;$('tour-back').onclick=()=>{tourStep=Math.max(0,tourStep-1);renderTour()};$('tour-next').onclick=()=>{if(tourStep===tourSteps.length-1)closeTour();else{tourStep++;renderTour()}};
 
+
+// Formation Intelligence: reference TO&E estimates, not simulated equipment or verified historical OB.
+(function installFormationIntelligence(){
+ const button=document.createElement('button');
+ button.id='formation-intel-open';button.textContent='Unit composition / TO&E';
+ button.title='Inspect unit echelon, personnel, tanks, and weapons';
+ const heading=$('unit-title');heading.insertAdjacentElement('afterend',button);
+ const dialog=document.createElement('dialog');dialog.id='formation-intel-dialog';
+ dialog.style.cssText='width:min(710px,94vw);max-height:88vh;overflow:auto;border:2px solid #53634e;border-radius:12px;padding:22px;background:#faf8f1;color:#263229';
+ document.body.appendChild(dialog);
+ const escUnit=v=>String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+ function profile(u){
+  const name=u.name.toLowerCase(),isTank=u.type==='tank',isArt=u.type==='artillery',isHQ=u.type==='hq';
+  const echelon=/\b(bn|battalion)\b/i.test(u.name)||/^\d+\/\d+\s/.test(u.name)?'Battalion':/\b(company|co\.?|reserve company)\b/i.test(u.name)?'Company':/\b(det\.?|detachment)\b/i.test(u.name)?'Detachment':/\b(battery|field art|field battery)\b/i.test(u.name)?'Battery / artillery formation':/\b(section|position)\b/i.test(u.name)?'Section / fortified position':isHQ?(u.echelon||'Headquarters'):isTank?'Armored formation (echelon unspecified)':isArt?'Artillery formation (echelon unspecified)':'Infantry formation (echelon unspecified)';
+  let rows,description;
+  if(isHQ){rows=[['Personnel','Not specified'],['Command vehicles / radios','Not specified'],['Heavy weapons','Not specified']];description='Command headquarters; actual staff and equipment establishment not modeled.'}
+  else if(isTank){rows=[['Tanks','Not specified (detachment could be smaller than a company)'],['Personnel','Not specified'],['Machine guns / small arms','Not specified'],['Recovery and maintenance vehicles','Not specified']];description='An armored detachment is not necessarily a full tank company or battalion. Do not assume a tank count from its 10 strength points.'}
+  else if(isArt){rows=[['Artillery pieces','Not specified'],['Personnel','Not specified'],['Machine guns / small arms','Not specified'],['Tractors / prime movers','Not specified']];description='Gun caliber, number of tubes, and echelon require a scenario-specific establishment.'}
+  else{rows=[['Personnel','Not specified'],['Rifles / carbines','Not specified'],['Automatic weapons / machine guns','Not specified'],['Mortars / anti-tank weapons','Not specified'],['Vehicles','Not specified']];description='A battalion and a company can have very different manpower and weapons. This scenario does not yet store verified equipment tables.'}
+  return {echelon,rows,description};
+ }
+ function open(){
+  const u=s.units.find(v=>v.id===selected);
+  if(!u){dialog.innerHTML='<h2>Unit composition</h2><p>Select a friendly unit on the map or roster first.</p><button id="formation-intel-close">Close</button>';dialog.querySelector('#formation-intel-close').onclick=()=>dialog.close();dialog.showModal();return}
+  const p=profile(u),support=[...G.attachments(s,u).map(x=>x.name),...G.fieldAttachments(s,u).map(x=>x.name)];
+  const known=u.side==='us'||!s.fog||G.spotted(s,u);
+  dialog.innerHTML='<div style="display:flex;justify-content:space-between;gap:12px;align-items:center"><h2 style="margin:0">Formation Intelligence</h2><button id="formation-intel-close">Close ✕</button></div>'+
+  '<h3>'+escUnit(u.name)+'</h3><p><strong>Organizational level:</strong> '+escUnit(p.echelon)+'<br><strong>Type:</strong> '+escUnit(u.type)+'<br><strong>Game strength:</strong> '+escUnit(known?u.hp+'/10':'Unknown')+' (abstract combat condition, NOT the number of vehicles or men)</p>'+
+  (known?'<table style="width:100%;border-collapse:collapse">'+p.rows.map(([k,v])=>'<tr><th scope="row" style="text-align:left;border-bottom:1px solid #ddd;padding:9px">'+escUnit(k)+'</th><td style="border-bottom:1px solid #ddd;padding:9px">'+escUnit(v)+'</td></tr>').join('')+'</table>':'<p>Enemy establishment and losses are unavailable unless intelligence identifies the formation.</p>')+
+  '<p>'+escUnit(p.description)+'</p>'+
+  (u.side==='us'?'<p><strong>Currently assigned support:</strong> '+escUnit(support.join(', ')||'None')+'</p>':'')+
+  '<p style="font-size:13px;color:#6d654e"><strong>Historical accuracy note:</strong> This is an identification and establishment reference, not a historical strength return. The present game engine tracks abstract HP, not separate personnel, tank, or weapon inventories. Exact numbers should be added only with researched TO&E and scenario-specific actual strengths.</p>';
+  dialog.querySelector('#formation-intel-close').onclick=()=>dialog.close();dialog.showModal();
+ }
+ button.onclick=open;
+})();
+
 if(typeof SupplyUI!=='undefined')SupplyUI.init();
 captureSession(s.scenarioId);G.updateIntel(s);if(!s.reports.length)s.reports.push(G.makeReport(s,null,s.turn===1?0:s.turn-1));if(!s.supplyReports.length)s.supplyReports.push(G.makeSupplyReport(s,null,s.turn===1?0:s.turn-1));render();save();if(s.autoReport)showReport();
