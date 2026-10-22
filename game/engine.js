@@ -377,9 +377,30 @@ for(const u of s.units.filter(v=>v.side==='us'&&v.type!=='hq')){
 s.commandReports=[...reports,...s.commandReports].slice(0,40);
 }
 
+function subordinateInitiative(s,events){
+ for(const u of alive(s).filter(v=>v.side==='us'&&['tank','infantry'].includes(v.type))){
+  const enemies=alive(s).filter(v=>v.side!==u.side&&dist(v,u)<=2&&(!s.fog||spotted(s,v,u.side)));
+  const danger=enemies.length>0,critical=u.hp<=3||u.cohesion<=25,damaged=u.hp<=5||u.cohesion<=45;
+  const policy=u.disengagePolicy==='hold'?'hold':u.disengagePolicy==='withdraw'?'withdraw':'initiative';
+  if(!damaged){u.withdrawalRequest=null;continue}
+  if(!danger){if(u.withdrawalRequest)u.withdrawalRequest=null;continue}
+  if(!u.withdrawalRequest||u.withdrawalRequest.turn!==s.turn){
+   u.withdrawalRequest={turn:s.turn,status:critical?'urgent':'pending'};
+   events.push('COMMAND REQUEST — '+u.name+': '+(critical?'critical combat losses':'heavy losses')+' ('+u.hp+'/10 strength). Request permission to disengage or reposition.');
+  }
+  if(policy==='hold'){events.push('COMMAND — '+u.name+': obeying hold-at-all-costs directive despite losses.');continue}
+  const imminent=critical&&(u.hp<=2||u.cohesion<=15||u.suppression>=2);
+  if(policy==='withdraw'||imminent){
+   const known={...s,weather:'fog'};
+   const retreat=withdrawalOrder(known,u);
+   if(retreat){u.order=retreat;u.withdrawalRequest.status='acting';events.push('EMERGENCY DISENGAGEMENT — '+u.name+': '+(policy==='withdraw'?'executing authorized withdrawal':'commander exercises emergency initiative to avoid destruction')+'.');}
+   else events.push('COMMAND — '+u.name+': withdrawal requested but no safer reachable position identified.');
+  }else if(u.order?.type==='attack'&&critical){u.order={type:'defend'};events.push('LOCAL INITIATIVE — '+u.name+': suspends attack and establishes defensive posture pending orders.')}
+ }
+}
 function resolve(s,decisions={}){if(s.finished)return s;let before=JSON.parse(JSON.stringify(s)),events=[];if(s.airRemaining===undefined)s.airRemaining=3;if(s.airTarget===undefined)s.airTarget=null;migrate(s);for(const u of s.units){u.reacted=false;u.reserveCommitted=u.order?.type==='reserve'}if(s.advancedRules)s.smoke=[];let suppressionHits=new Set();if(commandServices)commandServices.beginTurn(s,events);let deliveries=logistics(s);if(commandServices)commandServices.dispatch(s,deliveries,events);s.lastSupply={turn:s.turn,capacity:deliveries.capacity,delivered:deliveries.capacity-deliveries.unused,unused:deliveries.unused,blocked:deliveries.rows.filter(r=>!r.route).length};for(let r of deliveries.rows){let u=s.units.find(u=>u.id===r.id);u.stock=r.stock;events.push('SUPPLY — '+u.name+': '+(r.route?'+'+r.delivery+' delivered':'route cut')+', reserves '+u.stock+'/3 ('+u.priority+' priority; '+(s.allocationMode==='manual'?'requested '+r.request:'automatic')+').')}for(let u of alive(s)){u.supplied=supply(s,u);if(u.side==='de'&&u.supplied)u.stock=Math.min(3,u.stock+1);}
 // Plan with observed positions only. Never inspect Allied queued orders.
-events.push(...applyCommandPlan(s,decisions).map(r=>'COMMAND — '+r));for(const u of alive(s).filter(v=>v.side==='us'&&v.disengagePolicy&&!v.order)){const retreat=withdrawalOrder(s,u);if(retreat){u.order=retreat;events.push('COMMAND — '+u.name+' attempts to disengage under local authority.')}}planOpponent(s);if(operational(s))operationalEngineering(s,events);
+events.push(...applyCommandPlan(s,decisions).map(r=>'COMMAND — '+r));for(const u of alive(s).filter(v=>v.side==='us'&&v.disengagePolicy&&!v.order)){const retreat=withdrawalOrder(s,u);if(retreat){u.order=retreat;events.push('COMMAND — '+u.name+' attempts to disengage under local authority.')}}subordinateInitiative(s,events);planOpponent(s);if(operational(s))operationalEngineering(s,events);
 for(let u of alive(s)){if(u.order?.type!=='move')continue;if(s.advancedRules){u.preparedTarget=null;u.preparedTurn=0}let p=path(s,u,u.order);if(p){let spent=0;for(let n of p.path){if(!stepAllowed(s,u,u,n)||alive(s).some(v=>v.id!==u.id&&v.x===n.x&&v.y===n.y))break;spent+=moveCost(s,u,u,n);if(spent>budget(u))break;u.x=n.x;u.y=n.y;if(enemyZone(s,u,u.side)){events.push('CONTACT — '+u.name+' halts in an enemy zone of control.');break}}events.push(u.name+' advances to '+(u.x+1)+', '+(u.y+1)+'.')}else events.push(u.name+' cannot advance: route blocked.')}
 if(operational(s))operationalReactions(s,events);
 // Air support is assigned to an enemy formation and resolves after movement.
