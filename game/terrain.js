@@ -5,16 +5,20 @@ function draw(G,s,pos){
 let out='<defs><filter id="paper-grain"><feTurbulence type="fractalNoise" baseFrequency=".8" numOctaves="3" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncA type="linear" slope=".13"/></feComponentTransfer><feBlend in="SourceGraphic" mode="multiply"/></filter><linearGradient id="water-tone" x2="1" y2="1"><stop stop-color="#89b1b4"/><stop offset="1" stop-color="#346779"/></linearGradient><filter id="counter-shadow" x="-30%" y="-30%" width="170%" height="180%"><feDropShadow dx="1" dy="3" stdDeviation="2" flood-opacity=".45"/></filter></defs>';
 const colors={town:'#b4aa83',rear:'#a4ac7a',sea:'#527f8d',beach:'#d9c696',field:'#9aa06a',road:'#95976c',hedgerow:'#77834e',marsh:'#789b92'};
 const points=(p,r=43)=>Array.from({length:6},(_,i)=>{let a=(i*60-30)*Math.PI/180;return `${(p.x+r*Math.cos(a)).toFixed(2)},${(p.y+r*Math.sin(a)).toFixed(2)}`}).join(' ');
+if(G.scenario(s).sandbox){
+ for(let y=0;y<G.board(s).height;y++)for(let x=0;x<G.board(s).width;x++){const p=pos({x,y}),t=G.cell(x,y,s);out+=`<polygon class="hex" tabindex="0" role="button" aria-label="${t} hex ${x+1}, ${y+1}" data-x="${x}" data-y="${y}" points="${points(p)}" fill="${colors[t]}" stroke="#d9dfba" stroke-width="1"/>`;if(t==='road')out+=`<path d="M${p.x-32} ${p.y}h64" stroke="#d8c99d" stroke-width="5" pointer-events="none"/>`;if(t==='town')out+=`<text x="${p.x}" y="${p.y+5}" text-anchor="middle" pointer-events="none" fill="#4c4031">▥</text>`;if(t==='hedgerow')out+=`<path d="M${p.x-24} ${p.y+22}h48" stroke="#3d6038" stroke-width="8" pointer-events="none"/>`;out+=`<text x="${p.x}" y="${p.y+32}" text-anchor="middle" font-size="9" fill="#283727" pointer-events="none">${x+1},${y+1}</text>`;}
+ return out;
+}
 if(G.scenario(s).theme==='coast'){
-out+='<image href="normandy-map-v2.jpg" x="0" y="0" width="750" height="650" preserveAspectRatio="none" pointer-events="none"/>';
-for(let y=0;y<G.H;y++)for(let x=0;x<9;x++){let t=G.cell(x,y,s),p=pos({x,y});out+=`<polygon class="hex illustrated-hit" tabindex="0" role="button" aria-label="${t} hex ${x+1}, ${y+1}" data-x="${x}" data-y="${y}" points="${points(p)}" fill="transparent" style="stroke:#f3eed3;stroke-opacity:.3;stroke-width:.7"/>`}
-out+='<g class="terrain-rules-overlay" pointer-events="none">';for(let y=0;y<G.H;y++)for(let x=0;x<9;x++){let t=G.cell(x,y,s);out+=`<polygon points="${points(pos({x,y}))}" fill="${colors[t]}" fill-opacity=".6"/>`}out+='</g>';
+out+='<image href="'+(typeof window!=='undefined'&&window.UTAH_TEST_EDITION?'../normandy-map-v2.jpg?test=0.24.0':'normandy-map-v2.jpg')+'" x="0" y="0" width="750" height="650" preserveAspectRatio="none" pointer-events="none"/>';
+for(let y=0;y<G.board(s).height;y++)for(let x=0;x<G.board(s).width;x++){let t=G.cell(x,y,s),p=pos({x,y});out+=`<polygon class="hex illustrated-hit" tabindex="0" role="button" aria-label="${t} hex ${x+1}, ${y+1}" data-x="${x}" data-y="${y}" points="${points(p)}" fill="transparent" style="stroke:#f3eed3;stroke-opacity:.3;stroke-width:.7"/>`}
+out+='<g class="terrain-rules-overlay" pointer-events="none">';for(let y=0;y<G.board(s).height;y++)for(let x=0;x<G.board(s).width;x++){let t=G.cell(x,y,s);out+=`<polygon points="${points(pos({x,y}))}" fill="${colors[t]}" fill-opacity=".6"/>`}out+='</g>';
 out+='<g pointer-events="none" transform="translate(25 18)"><path d="M0 30L8 0L16 30L8 23Z" fill="#fff1cf" stroke="#354835"/><text x="8" y="43" text-anchor="middle" fill="#fff1cf" font-size="12" font-weight="800">N</text></g>';return out;
 }
 const line=(x1,y1,x2,y2,c,w=1,extra='')=>`<path d="M${x1} ${y1}L${x2} ${y2}" stroke="${c}" stroke-width="${w}" fill="none" ${extra}/>`;
 function tree(x,y,r=3){return `<ellipse cx="${x+1.5}" cy="${y+2}" rx="${r+1}" ry="${r}" fill="#273a28" opacity=".3"/><circle cx="${x}" cy="${y}" r="${r}" fill="#3e5535"/><circle cx="${x-.7}" cy="${y-.8}" r="${r*.6}" fill="#6b7946" opacity=".8"/>`}
 function house(x,y,angle=0){return `<g transform="translate(${x} ${y}) rotate(${angle})"><rect x="-4" y="-3" width="10" height="8" fill="#273b2e" opacity=".35"/><rect x="-5" y="-4" width="9" height="7" fill="#e2d7b7"/><path d="M-6 -4L-1 -7L5 -4V0H-6Z" fill="#795c48"/><path d="M-6 -4H5" stroke="#b99b7c" stroke-width=".8"/></g>`}
-for(let y=0;y<G.H;y++)for(let x=0;x<9;x++){
+for(let y=0;y<G.board(s).height;y++)for(let x=0;x<G.board(s).width;x++){
 const p=pos({x,y}),t=G.cell(x,y,s),id='land-'+x+'-'+y;let seed=(x+13)*7717+(y+9)*131+17;const rnd=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296};
 out+=`<defs><clipPath id="${id}"><polygon points="${points(p)}"/></clipPath></defs><polygon class="hex" tabindex="0" role="button" aria-label="${t} hex ${x+1}, ${y+1}" data-x="${x}" data-y="${y}" points="${points(p)}" fill="${colors[t]}"/><g clip-path="url(#${id})" pointer-events="none">`;
 if(['field','hedgerow','road','rear'].includes(t)){
@@ -49,10 +53,10 @@ for(let k=0;k<22;k++){let xx=p.x-43+rnd()*86,yy=p.y-43+rnd()*86;out+=`<circle cx
 out+='</g>';
 }
 // Continuous roads connect only hexes the rules identify as road or beach.
-let roads='';for(let y=0;y<G.H;y++)for(let x=0;x<9;x++){let t=G.cell(x,y,s);if(!['road','beach'].includes(t))continue;let p=pos({x,y});for(let n of G.neighbors({x,y},s)){if(n.y*G.W+n.x<=y*G.W+x||!['road','beach'].includes(G.cell(n.x,n.y,s)))continue;let q=pos(n);roads+=`M${p.x} ${p.y}L${q.x} ${q.y}`}}
+let roads='';for(let y=0;y<G.board(s).height;y++)for(let x=0;x<G.board(s).width;x++){let t=G.cell(x,y,s);if(!['road','beach'].includes(t))continue;let p=pos({x,y});for(let n of G.neighbors({x,y},s)){if(n.y*G.W+n.x<=y*G.W+x||!['road','beach'].includes(G.cell(n.x,n.y,s)))continue;let q=pos(n);roads+=`M${p.x} ${p.y}L${q.x} ${q.y}`}}
 out+=`<g pointer-events="none"><path d="${roads}" fill="none" stroke="#5b634a" stroke-width="7" opacity=".75"/><path d="${roads}" fill="none" stroke="#c9bc91" stroke-width="4"/><path d="${roads}" fill="none" stroke="#eee0b4" stroke-width=".7" opacity=".65"/></g>`;
 // The grid stays above the illustration and below tactical overlays.
-out+='<g pointer-events="none">';for(let y=0;y<G.H;y++)for(let x=0;x<9;x++){let p=pos({x,y});out+=`<polygon class="cartographic-grid" points="${points(p)}" fill="none" stroke="#f3eed3" stroke-opacity=".27" stroke-width=".7"/>`}
+out+='<g pointer-events="none">';for(let y=0;y<G.board(s).height;y++)for(let x=0;x<G.board(s).width;x++){let p=pos({x,y});out+=`<polygon class="cartographic-grid" points="${points(p)}" fill="none" stroke="#f3eed3" stroke-opacity=".27" stroke-width=".7"/>`}
 out+=`<g transform="translate(28 18)"><path d="M0 32L8 0L16 32L8 25Z" fill="#f6efd5" stroke="#354835"/><text x="8" y="46" text-anchor="middle" fill="#f9f0d6" stroke="#334231" stroke-width=".3" font-size="12" font-weight="800">N</text></g></g>`;
 return out;
 }

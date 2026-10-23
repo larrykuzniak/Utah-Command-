@@ -5,7 +5,7 @@
   'use strict';
   const ranks={Regiment:0,Division:1,Corps:2,Army:3};
   const active=p=>['outbound','observing','returning'].includes(p.status);
-  const land=(s,p)=>p&&Number.isInteger(p.x)&&Number.isInteger(p.y)&&p.x>=0&&p.x<9&&p.y>=0&&p.y<9&&!['off','sea','rear'].includes(G.cell(p.x,p.y,s));
+  const land=(s,p)=>p&&Number.isInteger(p.x)&&Number.isInteger(p.y)&&p.x>=0&&p.x<G.board(s).width&&p.y>=0&&p.y<G.board(s).height&&!['off','sea','rear'].includes(G.cell(p.x,p.y,s));
   const clone=x=>JSON.parse(JSON.stringify(x));
   function log(s,kind,message,unitId=null,hqId=null){
     s.commandActivity.push({turn:s.turn,kind,message:message.slice(0,600),unitId,hqId});
@@ -20,7 +20,7 @@
   }
   function basePoint(s){
     const capacity=G.scenario(s).supply;
-    return {id:'base-supply',name:'Rear supply base',x:8,y:4,stock:capacity*2,capacity:capacity*3,status:'active',readyTurn:s.turn,base:true};
+    return {id:'base-supply',name:'Rear supply base',x:G.board(s).width-1,y:Math.floor(G.board(s).height/2),stock:capacity*2,capacity:capacity*3,status:'active',readyTurn:s.turn,base:true};
   }
   function newGame(s){s.forwardSupplyEnabled=true;s.supplyPoints=[basePoint(s)];log(s,'supply','Rear supply base established. Staff advice and patrol orders are available from the Command desk.');}
   function enableSupply(s,on){
@@ -194,11 +194,11 @@
     for(const u of s.units.filter(u=>u.side==='us'))s.acknowledgedOrders[u.id]=JSON.stringify({order:u.order,mission:u.missionOrder,disengage:u.disengagePolicy});
   }
   function validData(s){
-    const text=(v,n)=>typeof v==='string'&&v.length<=n,int=(v,a,b)=>Number.isInteger(v)&&v>=a&&v<=b,ref=v=>v===null||s.units.some(u=>u.id===v),contact=r=>r&&text(r.id,80)&&text(r.name,80)&&['infantry','tank','artillery'].includes(r.type)&&land(s,r)&&int(r.seenTurn,1,30);
-    return typeof s.forwardSupplyEnabled==='boolean'&&int(s.serviceSequence,0,10000)&&Array.isArray(s.supplyPoints)&&s.supplyPoints.length<=20&&new Set(s.supplyPoints.map(p=>p.id)).size===s.supplyPoints.length&&s.supplyPoints.filter(p=>p.base).length<=1&&s.supplyPoints.every(p=>p&&text(p.id,80)&&text(p.name,100)&&land(s,p)&&int(p.capacity,1,60)&&int(p.stock,0,p.capacity)&&typeof p.base==='boolean'&&['active','moving','retired','lost'].includes(p.status)&&int(p.readyTurn,1,60)&&(!p.target||land(s,p.target))&&(p.status!=='moving'||land(s,p.target))&&(p.recovering===undefined||typeof p.recovering==='boolean'))&&
-      Array.isArray(s.reconPatrols)&&s.reconPatrols.length<=40&&new Set(s.reconPatrols.map(p=>p.id)).size===s.reconPatrols.length&&s.reconPatrols.every(p=>p&&text(p.id,80)&&ref(p.parentId)&&p.parentId!==null&&land(s,p)&&land(s,p.target)&&['outbound','observing','returning','returned','missing'].includes(p.status)&&int(p.startedTurn,1,30)&&(p.reportDue===null||int(p.reportDue,1,60))&&(p.reportedTurn===null||int(p.reportedTurn,1,30))&&(p.completedTurn===null||int(p.completedTurn,1,30))&&Array.isArray(p.pending)&&p.pending.length<=30&&p.pending.every(contact))&&
-      Array.isArray(s.reconReports)&&s.reconReports.length<=20&&s.reconReports.every(r=>r&&text(r.patrolId,80)&&ref(r.parentId)&&int(r.observedTurn,1,30)&&int(r.receivedTurn,1,30)&&Array.isArray(r.contacts)&&r.contacts.length<=30&&r.contacts.every(contact))&&
-      Array.isArray(s.commandActivity)&&s.commandActivity.length<=160&&s.commandActivity.every(r=>r&&int(r.turn,1,30)&&text(r.kind,30)&&text(r.message,600)&&ref(r.unitId)&&ref(r.hqId))&&Array.isArray(s.dismissedAdvice)&&s.dismissedAdvice.length<=40&&s.dismissedAdvice.every(v=>text(v,6000))&&s.acknowledgedOrders&&typeof s.acknowledgedOrders==='object'&&!Array.isArray(s.acknowledgedOrders)&&Object.keys(s.acknowledgedOrders).length<=30&&Object.entries(s.acknowledgedOrders).every(([k,v])=>s.units.some(u=>u.id===k)&&text(v,3000))&&s.units.every(u=>typeof u.reconCommitted==='boolean'&&u.reconCommitted===s.reconPatrols.some(p=>p.parentId===u.id&&active(p)));
+    const text=(v,n)=>typeof v==='string'&&v.length<=n,int=(v,a,b)=>Number.isInteger(v)&&v>=a&&v<=b,ref=v=>v===null||s.units.some(u=>u.id===v),contact=r=>r&&text(r.id,80)&&text(r.name,80)&&['infantry','tank','artillery'].includes(r.type)&&land(s,r)&&int(r.seenTurn,1,G.scenario(s).turns);
+    return typeof s.forwardSupplyEnabled==='boolean'&&int(s.serviceSequence,0,10000)&&Array.isArray(s.supplyPoints)&&s.supplyPoints.length<=20&&new Set(s.supplyPoints.map(p=>p.id)).size===s.supplyPoints.length&&s.supplyPoints.filter(p=>p.base).length<=1&&s.supplyPoints.every(p=>p&&text(p.id,80)&&text(p.name,100)&&land(s,p)&&int(p.capacity,1,Math.max(60,G.scenario(s).supply*3))&&int(p.stock,0,p.capacity)&&typeof p.base==='boolean'&&['active','moving','retired','lost'].includes(p.status)&&int(p.readyTurn,1,G.scenario(s).turns+30)&&(!p.target||land(s,p.target))&&(p.status!=='moving'||land(s,p.target))&&(p.recovering===undefined||typeof p.recovering==='boolean'))&&
+      Array.isArray(s.reconPatrols)&&s.reconPatrols.length<=40&&new Set(s.reconPatrols.map(p=>p.id)).size===s.reconPatrols.length&&s.reconPatrols.every(p=>p&&text(p.id,80)&&ref(p.parentId)&&p.parentId!==null&&land(s,p)&&land(s,p.target)&&['outbound','observing','returning','returned','missing'].includes(p.status)&&int(p.startedTurn,1,G.scenario(s).turns)&&(p.reportDue===null||int(p.reportDue,1,G.scenario(s).turns+30))&&(p.reportedTurn===null||int(p.reportedTurn,1,G.scenario(s).turns))&&(p.completedTurn===null||int(p.completedTurn,1,G.scenario(s).turns))&&Array.isArray(p.pending)&&p.pending.length<=G.unitLimit(s)&&p.pending.every(contact))&&
+      Array.isArray(s.reconReports)&&s.reconReports.length<=20&&s.reconReports.every(r=>r&&text(r.patrolId,80)&&ref(r.parentId)&&int(r.observedTurn,1,G.scenario(s).turns)&&int(r.receivedTurn,1,G.scenario(s).turns)&&Array.isArray(r.contacts)&&r.contacts.length<=G.unitLimit(s)&&r.contacts.every(contact))&&
+      Array.isArray(s.commandActivity)&&s.commandActivity.length<=160&&s.commandActivity.every(r=>r&&int(r.turn,1,G.scenario(s).turns)&&text(r.kind,30)&&text(r.message,600)&&ref(r.unitId)&&ref(r.hqId))&&Array.isArray(s.dismissedAdvice)&&s.dismissedAdvice.length<=40&&s.dismissedAdvice.every(v=>text(v,6000))&&s.acknowledgedOrders&&typeof s.acknowledgedOrders==='object'&&!Array.isArray(s.acknowledgedOrders)&&Object.keys(s.acknowledgedOrders).length<=G.unitLimit(s)&&Object.entries(s.acknowledgedOrders).every(([k,v])=>s.units.some(u=>u.id===k)&&text(v,3000))&&s.units.every(u=>typeof u.reconCommitted==='boolean'&&u.reconCommitted===s.reconPatrols.some(p=>p.parentId===u.id&&active(p)));
   }
   function valid(s){try{return validData(s)}catch(e){return false}}
   const api={migrate,newGame,beginTurn,dispatch,patrolTurn,deliverReports,finishTurn,supplyRoute,logistics};
