@@ -71,3 +71,23 @@ Utah Command is being developed for players who enjoy uncertainty, the realities
 Each new entry should specify **date**, **design problem**, **reasoning and alternatives**, **decision**, **gameplay consequence**, **implementation status** (proposed/prototyped/tested/released), and **links to relevant commits or tests**. Earlier entries remain intact; corrections and changes of mind are part of the history.
 
 See [the game](game/), [the technical personnel/combat specification](PERSONNEL-COMBAT-MODEL.md), and the repository's Git history.
+
+
+## October 22, 2026 — Frontage, unit boundaries, and contact with adjacent formations
+**Status: proposed design concept; NOT yet implemented or play-tested.**
+
+**Problem.** A battalion represented by one square/counter looks as though it occupies only a point on the map. Two battalions advancing between the Southern Exit and Crossroads may appear miles apart, even though a real commander assigns zones or axes and expects formations to deploy across frontage, maintain flank security, and coordinate with neighbors. A unit moving in road column is not deployed in the same fashion as a battalion in an assault.
+
+**Design direction.** Distinguish the counter's center/HQ or approximate formation position from its occupied or controlled frontage. Each maneuver formation could have a mission boundary or assigned zone (left/right limits, start line and objective), a deployment posture (road column, tactical march, deployed assault, defense), a calculated *effective frontage* reflecting terrain, strength, echelon, and posture, and an uncertainty band rather than perfectly known lines of soldiers. The commander may draw division/regimental boundary lines and assign sectors; subordinate commanders deploy companies within those limits without squad-by-squad orders.
+
+**Contact and gaps.** Show confirmed liaison/contact, tentative contact, flank gaps, and dangerous overlaps with adjacent friendly units. A dashed line or translucent band should make coverage visible when selected; a separate overlay toggle should keep the map readable. Contiguous assigned boundaries should not imply continuous occupancy or guaranteed communication. Terrain, visibility, unit depletion, time since last report, and communications all determine confidence. A road movement column may secure much less lateral frontage than the same battalion after deploying.
+
+**Mechanics to test.** Allow phased formation changes consuming realistic time, especially moving from road column to deployed attack. Patrols, recon and flank guards can improve awareness without making the sector impermeable. Flank gaps and poorly coordinated boundary crossings can create realistic delay, infiltration risk, friendly-fire risk, or exposure; good lateral contact can support cooperative attacks and reserve movement. Width must be bounded by available troops and mission—not a radius growing magically from the counter. Use historically defensible frontage ranges as scenario/terrain parameters, not one universal battalion width.
+
+**Presentation.** When a unit is selected, display its assigned sector and *estimated* occupied frontage; optionally shade coverage and mark left/right neighbor status. Staff reports should say, for example, “Contact with battalion on right confirmed; gap to left not reconnoitered,” or “Unit still deploying off road; only its lead elements are in position.” A deployed battalion approaching the objective should visibly spread within its boundary rather than the square alone purporting to attack.
+
+**Why this matters.** It preserves the higher-command scale while distinguishing a formation's physical footprint, assigned responsibility, and what higher headquarters actually knows. It also makes quiet turns meaningful: deploying, establishing boundaries, conducting liaison, and closing gaps can take time without a firefight.
+
+**Open questions.** Hex-scale precision, overlapping formations, reserves in depth, and support or headquarters footprints need careful rules. Do not infer enemy deployment with perfect accuracy.
+
+**Commit note.** This journal entry records a design decision to explore, not a released feature.
