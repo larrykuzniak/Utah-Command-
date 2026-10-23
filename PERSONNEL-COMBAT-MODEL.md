@@ -45,3 +45,13 @@ Fog of war applies to enemy formations: never disclose their exact composition j
 
 ## Safety rails
 Never manufacture a historical precision unsupported by sources. Never produce false estimates of 'actual' KIA/WIA from abstract HP without a separately modeled causal casualty event. Do not allow deterministic guaranteed leader deaths from arbitrary HP thresholds.
+
+## Future feature backlog: Persistent battlefield engineering and obstacle effects
+Status: planned, not implemented.
+- Replace generic attached-engineer combat-point bonuses with explicit capabilities tied to terrain, personnel, tools, materials, and time.
+- Represent minefields, bocage, wire, bridges, and other obstacles as persistent map conditions with reconnaissance, breach progress, marked lanes, partial clearance, and possible enemy interference.
+- A breach reduces or bypasses the obstacle's specific defensive advantage along a particular route; it does not inherently increase infantry firepower or remove the defender's organic strength.
+- Model lane width/capacity separately for infantry and vehicles; one lane does not permit unlimited passage by entire formations.
+- Allow tasks to take multiple turns, with variable duration depending on density, weather, enemy fire, supplies, and engineer capability. Never assume instant removal within a four-hour turn.
+- Carry incomplete work between turns. Reflect effects in movement, cohesion, exposure, delays, and combat resolution—not merely attack/defense point arithmetic.
+- Provide G-3/engineer reports explaining the work, progress, blockages, and expected operational impact even on quiet turns.
