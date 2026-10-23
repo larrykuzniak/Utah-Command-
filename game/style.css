@@ -88,3 +88,7 @@ body.map-focus{overflow:hidden}body.map-focus .workspace{position:fixed;inset:0;
 .map-condition-alerts{flex-shrink:0;background:#e9eedf;color:#23352d;padding:8px 12px;border-bottom:2px solid #758570;font-size:13px;line-height:1.5;max-height:110px;overflow:auto}.map-condition-alerts strong{display:block}.map-condition-alerts:has(.condition-alert-item){background:#fff0bd;border-color:#b27a13}.map-condition-alerts.critical-alert{background:#ffe3dc;color:#7b1c15;border-color:#bf3829}.condition-alert-item{display:inline-block;margin-right:14px;font-weight:700}
 
 .attachment-unavailable{background:#e5e5df;color:#666b63;border-color:#b9bcb3}.attachment-unavailable button:disabled{background:#d6d8d1;color:#64695f;border-color:#b9bcb3;opacity:1;cursor:not-allowed}
+
+
+/* Friendly frontage overlay remains readable in full-screen and portrait. */
+.frontage-summary{flex-shrink:0;padding:6px 12px;background:#223c43;color:#e9f8ff;font-size:12px;line-height:1.4}.frontage-summary[hidden]{display:none}.frontage-detail{margin-top:10px;padding:10px;border:2px solid #a77c23;border-radius:5px;background:#fff4d0;color:#293d36;font-size:13px;line-height:1.5}.frontage-detail small{display:block;margin-top:6px}.flank-contact{color:#17642c}.flank-gap,.flank-open,.flank-staggered{color:#8c4712}.frontage-overlay path{fill:none;stroke-linecap:round;stroke-linejoin:round}.map-tools label:has(#boundaries-toggle){min-height:44px;display:inline-flex;align-items:center;gap:4px}

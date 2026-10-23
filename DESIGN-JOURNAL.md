@@ -91,3 +91,15 @@ See [the game](game/), [the technical personnel/combat specification](PERSONNEL-
 **Open questions.** Hex-scale precision, overlapping formations, reserves in depth, and support or headquarters footprints need careful rules. Do not infer enemy deployment with perfect accuracy.
 
 **Commit note.** This journal entry records a design decision to explore, not a released feature.
+
+
+## October 23, 2026 — First playable frontage overlay (v0.23.1)
+**Status: implemented and checked; first display-only iteration.**
+
+**Decision.** Add a Boundaries switch above the map, enabled by default. Friendly maneuver formations show estimated frontage and dashed side limits, with the selected formation in gold and others in blue. Selected-unit details identify left/right neighbors and estimated contact, gaps, staggered lines, or open flanks. Width uses the existing illustrative establishment, orders/mission, local terrain, strength, fatigue, suppression and reserves. Movement uses a narrow column, attack and defense deploy more widely. Attached support uses its host footprint; headquarters and artillery have no separate maneuver frontage.
+
+**Gameplay consequence.** The player can inspect the approximate formation spread and flank relationship without directing companies. Estimates follow current order/mission axes, defaulting inland; they use schematic map hex widths. They are neither historical sector assignments nor claims of occupied/control territory. No combat or movement rules change. Deployment time, manually assigned sectors, communications/liaison confidence, terrain-clipped coverage and flank combat effects remain future work.
+
+**Validation.** `checks/frontage-check.cjs` covers posture/axis changes, left/right orientation, depleted units, contact versus gaps/depth, attached/destroyed exclusions, concealed-enemy privacy, all scenarios, movement and state purity. `checks/command-desk-ui-check.cjs` covers toggle/render, preference storage, supply-view suppression, save validation and a complete UI battle. SVG map rendering visually inspected. Existing command-services (48 complete feature games), coordinated attack, realism and reinforcement checks passed. Existing `checks/visibility-check.cjs` fails its delegated-withdrawal assertion in the unchanged engine; this release does not alter that behavior. Native iPad interaction still requires player testing.
+
+**Implementation.** `game/frontage.js`, integrated into `game/app.js`; offline cache updated to v0.23.1. This implements the first estimated display from the preceding concept, not the full proposed boundary simulation.
