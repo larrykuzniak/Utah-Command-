@@ -3,7 +3,7 @@ const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/st
 const ctx={window:{}};vm.createContext(ctx);for(const file of ['engine.js','command-services.js','proving-ground.js','frontage.js'])vm.runInContext(fs.readFileSync(path.join(__dirname,'../game',file),'utf8'),ctx);
 const G=ctx.window.Game,F=ctx.window.Frontage;
 const valid=vm.runInContext('('+fs.readFileSync(path.join(__dirname,'../game/app.js'),'utf8').match(/function valid\(p\)\{[\s\S]*?(?=\nfunction esc)/)[0]+')',vm.createContext({G}));
-const fresh=()=>G.fresh('proving-ground');let s=fresh();assert.equal(G.board(s).width,24);assert.equal(G.board(s).height,18);assert.equal(s.units.length,30);assert(valid(s),'opening save valid');
+const fresh=()=>G.fresh('proving-ground');let s=fresh();assert.equal(G.board(s).width,24);assert.equal(G.board(s).height,18);assert.equal(s.units.length,30);assert(valid(s),'opening save valid');assert(G.makeReport(s).lines.some(t=>t.includes('Available on request')));
 assert.equal(G.cell(23,17,s),'road');assert.equal(G.cell(24,17,s),'rear');assert.equal(G.cell(23,18,s),'off');assert(G.neighbors({x:22,y:16},s).some(p=>p.x===23));
 const a=s.units.find(u=>u.id==='pg-a');assert(G.path(s,a,{x:22,y:4}));assert(F.model(G,s,p=>({x:p.x*76,y:p.y*62})).some(v=>v.id===a.id),'frontage on extended map');assert(G.edgeSupplyRoute(s,a).at(-1).x===23);
 const before=s.units.filter(u=>u.side==='de').map(u=>[u.id,u.x,u.y]);G.planOpponent(s);for(const [id,x,y] of before){const u=s.units.find(u=>u.id===id);assert.notEqual(u.order?.type,'move');assert.equal(u.x,x);assert.equal(u.y,y)}

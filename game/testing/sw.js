@@ -2,7 +2,7 @@
 // existing windows to close so a battle never mixes old and new game files.
 // Each installed edition owns its own cache and cleanup boundary.
 const CACHE_PREFIX = 'utah-command-shell-' + new URL(self.registration.scope).pathname + ':';
-const CACHE = CACHE_PREFIX + 'v0.24.0';
+const CACHE = CACHE_PREFIX + 'v0.24.0-r2';
 const ASSETS = ["index.html", "manifest.webmanifest", "../style.css?test=0.24.0", "../engine.js?test=0.24.0", "../terrain.js?test=0.24.0", "../app.js?test=0.24.0", "../frontage.js?test=0.24.0", "../proving-ground.js?test=0.24.0", "../builder.js?test=0.24.0", "../logistics-ui.js?test=0.24.0", "../command-services.js?test=0.24.0", "../command-desk.js?test=0.24.0", "../pwa.js?test=0.24.0", "../normandy-map-v2.jpg?test=0.24.0", "../icon.svg?test=0.24.0", "../icon-180.png?test=0.24.0", "../icon-192.png?test=0.24.0", "../icon-512.png?test=0.24.0", "../quickstart.html?test=0.24.0", "../field-manual.html?test=0.24.0", "../support.html?test=0.24.0", "../privacy.html?test=0.24.0", "../distribution.js?test=0.24.0"];
 const assetURLs = ASSETS.map(path => new URL(path, self.registration.scope).href);
 self.addEventListener('install', event => {
