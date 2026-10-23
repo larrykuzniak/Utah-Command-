@@ -248,7 +248,11 @@ $('tour-open').onclick=()=>{setMapFocus(false);tourStep=0;renderTour()};$('tour-
  function open(){
   const u=s.units.find(v=>v.id===selected);
   if(!u){dialog.innerHTML='<h2>Unit composition</h2><p>Select a friendly unit on the map or roster first.</p><button id="formation-intel-close">Close</button>';dialog.querySelector('#formation-intel-close').onclick=()=>dialog.close();dialog.showModal();return}
-  const p=profile(u),support=[...G.attachments(s,u).map(x=>x.name),...G.fieldAttachments(s,u).map(x=>x.name)];
+  const p=profile(u),personnel=G.personnelState(u),support=[...G.attachments(s,u).map(x=>x.name),...G.fieldAttachments(s,u).map(x=>x.name)];
+  if(u.side==='us'){
+   p.rows=[['Personnel (planning strength)',personnel.present+' / '+personnel.personnel],['Personnel-equivalent shortfall',personnel.shortfall],['Serviceable tanks (estimate)',personnel.serviceableTanks+' / '+personnel.tanks],['Serviceable guns (estimate)',personnel.serviceableGuns+' / '+personnel.guns],['Automatic weapons (establishment only)',personnel.automaticWeapons],['Replacement experience factor',Math.round(personnel.quality*100)+'%'],...p.rows.filter(row=>!(/Personnel|Tanks|Artillery pieces|Machine guns|automatic weapons/i).test(row[0]))];
+   p.description='G-1 planning figures derive from formation type and abstract strength. Equipment estimates are not individual vehicle loss records. '+personnel.basis;
+  }
   const known=u.side==='us'||!s.fog||G.spotted(s,u);
   dialog.innerHTML='<div style="display:flex;justify-content:space-between;gap:12px;align-items:center"><h2 style="margin:0">Formation Intelligence</h2><button id="formation-intel-close">Close ✕</button></div>'+
   '<h3>'+escUnit(u.name)+'</h3><p><strong>Organizational level:</strong> '+escUnit(p.echelon)+'<br><strong>Type:</strong> '+escUnit(u.type)+'<br><strong>Game strength:</strong> '+escUnit(known?u.hp+'/10':'Unknown')+' (abstract combat condition, NOT the number of vehicles or men)</p>'+
