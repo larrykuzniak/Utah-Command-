@@ -188,7 +188,7 @@ function defenseCover(s,u){return (['hedgerow','marsh','town'].includes(cell(u.x
 // values, NOT researched historical orders of battle or individual casualties.
 function establishment(u){
  const n=(u.name||'').toLowerCase(),hq=u.type==='hq',tank=u.type==='tank',art=u.type==='artillery';
- const echelon=/\\b(det\\.?|detachment)\\b/.test(n)?'detachment':/\\b(section|position)\\b/.test(n)?'section':/\\b(battery)\\b/.test(n)?'battery':/\\b(company|co\\.?|reserve company)\\b/.test(n)?'company':/\\b(bn|battalion)\\b/.test(n)||/^\\d+\\/\\d+/.test(n)?'battalion':hq?'headquarters':art?'battery':tank?'detachment':'company';
+ const echelon=/\b(det\.?|detachment)\b/.test(n)?'detachment':/\b(section|position)\b/.test(n)?'section':/\b(battery)\b/.test(n)?'battery':/\b(company|co\.?|reserve company)\b/.test(n)?'company':/\b(bn|battalion)\b/.test(n)||/^\d+\/\d+/.test(n)?'battalion':hq?'headquarters':art?'battery':tank?'detachment':'company';
  const personnel=hq?80:tank?(echelon==='detachment'?80:echelon==='company'?160:650):art?(echelon==='section'?35:180):echelon==='battalion'?750:echelon==='section'?90:180;
  return {echelon,personnel,tanks:tank?(echelon==='detachment'?8:echelon==='company'?17:50):0,guns:art?(echelon==='section'?2:6):0,automaticWeapons:hq?4:tank?8:art?6:Math.round(personnel/15),basis:'Illustrative scenario planning establishment; not a verified historical TO&E'};
 }
