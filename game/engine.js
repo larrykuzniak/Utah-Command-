@@ -147,6 +147,16 @@ function occupiedHexes(s,u){return new Set(s.units.filter(v=>v.hp>0&&v.id!==u.id
 function path(s,u,target){const queue=new RouteQueue({x:u.x,y:u.y,cost:0,path:[]},(a,b)=>a.cost-b.cost),seen=new Set(),occupied=occupiedHexes(s,u);while(queue.length){let p=queue.shift(),key=p.x+','+p.y;if(seen.has(key))continue;seen.add(key);if(p.x===target.x&&p.y===target.y)return p;if(p.cost>0&&enemyZone(s,p,u.side))continue;for(let n of movementNeighbors(s,u,p)){if(!stepAllowed(s,u,p,n)||occupied.has(n.x+','+n.y))continue;queue.push({...n,cost:p.cost+moveCost(s,u,p,n),path:[...p.path,n]})}}return null}
 function range(u){if(u.type==='hq')return 0;return u.type==='artillery'?4:1}
 function budget(u){if(u.type==='hq')return u.rulesAdvanced&&u.suppression>=2?1:2;return Math.max(1,(u.type==='tank'?4:u.type==='artillery'?2:3)-(u.fatigue>=3?1:0)-(u.rulesAdvanced&&u.suppression>=2?1:0)-(u.operational&&u.cohesion<40?1:0)-((u.stock===undefined?u.supplied:u.stock>=2)?0:1))}
+// Supply interdiction: operational infantry and armor threaten adjacent hexes.
+// A capable friendly combat unit on the threatened hex provides convoy security.
+// Do not expose hidden enemy positions through the routing preview.
+function supplyInterdicted(s,p,side){
+  if(!operational(s))return false;
+  const troops=alive(s);
+  const hostile=troops.some(e=>e.side!==side&&['infantry','tank'].includes(e.type)&&e.hp>0&&e.suppression<2&&e.cohesion>=40&&dist(e,p)<=1);
+  if(!hostile)return false;
+  return !troops.some(f=>f.side===side&&['infantry','tank'].includes(f.type)&&f.hp>0&&f.suppression<2&&f.cohesion>=40&&f.x===p.x&&f.y===p.y);
+}
 function edgeSupplyRoute(s,u){if(u.type==='hq'&&u.x>=board(s).width)return [{x:u.x,y:u.y},{x:board(s).width-1,y:u.y}];
 const policy=u.side==='us'?(u.routePolicy||'shortest'):'shortest',entry=u.side==='us'?(u.supplyEntry||'auto'):'auto';
 const enemies=alive(s).filter(v=>v.side!==u.side),observed=policy==='cautious'?enemies.filter(v=>!s.fog||s.finished||spotted(s,v,u.side)):[];
@@ -156,7 +166,7 @@ const sector=entry==='auto'||entry==='north'&&p.y<board(s).height/3||entry==='ce
 if((u.side==='us'?p.x===board(s).width-1&&sector:p.x===0))return [{x:u.x,y:u.y},...p.path];
 for(let n of neighbors(p,s)){
 if(!passage(s,p,n,{type:'supply'}))continue;
-if(seen.has(n.x+','+n.y)||enemies.some(v=>v.x===n.x&&v.y===n.y))continue;
+if(seen.has(n.x+','+n.y)||enemies.some(v=>v.x===n.x&&v.y===n.y)||supplyInterdicted(s,n,u.side))continue;
 let terrain=cell(n.x,n.y,s),step=policy==='roads'?(['road','beach'].includes(terrain)?1:terrain==='marsh'?4:3):1;
 if(policy==='cautious'&&observed.some(v=>dist(v,n)<=1))step+=6;
 q.push({...n,cost:p.cost+step,path:[...p.path,n]});
@@ -500,5 +510,5 @@ return {turn,lines}}
 
 function clock(s,minutes){const day=scenario(s).sandbox?"D"+(Math.floor(minutes/1440)+1)+" ":"";minutes%=1440;return day+Math.floor(minutes/60).toString().padStart(2,"0")+(minutes%60).toString().padStart(2,"0")}
 function sandboxAction(s,kind,options={}){return root.ProvingGround?root.ProvingGround.action(s,kind,options):"Training controls unavailable."}
-root.Game={clock,board,unitLimit,sandboxAction,establishment,personnelState,assignCoordinatedAttack,defenseCover,RouteQueue,random,installCommandServices,edgeSupplyRoute,sightRange,tacticalContact,withdrawalOrder,missionTypes,commandLevels,commandValid,assignMission,missionName,commandRoute,commandPlan,applyCommandPlan,headquartersPositions,movementNeighbors,regimentalSupply,supplyCapacity,scenarioSpecValid,registerScenario,operational,operationalValid,toggleOperational,riverLayout,bridgeList,riverCrossing,passage,engineerCapable,enemyZone,stepAllowed,moveCost,lineOfSight,combatEstimate,hqCatalog,headquarters,headquartersValid,commandLink,commandStatus,supportAvailable,activeAttachments,assignCommander,advancedValid,toggleAdvanced,prepared,smokeCover,supportCatalog,attachments,fieldAttachments,attachmentValid,assignAttachment,supportBonus,W,H,objectives,cell,neighbors,dist,fresh,alive,path,range,budget,planOpponent,resolve,supply,supplyRoute,migrate,consumption,logistics,fireFactor,spotted,contacts,updateIntel,visibleLog,scenarios,scenario,reachable,makeReport,makeSupplyReport};if(typeof module!=='undefined')module.exports=root.Game;
+root.Game={clock,board,unitLimit,sandboxAction,establishment,personnelState,assignCoordinatedAttack,defenseCover,RouteQueue,random,installCommandServices,edgeSupplyRoute,sightRange,tacticalContact,withdrawalOrder,missionTypes,commandLevels,commandValid,assignMission,missionName,commandRoute,commandPlan,applyCommandPlan,headquartersPositions,movementNeighbors,regimentalSupply,supplyCapacity,scenarioSpecValid,registerScenario,operational,operationalValid,toggleOperational,riverLayout,bridgeList,riverCrossing,passage,engineerCapable,enemyZone,supplyInterdicted,stepAllowed,moveCost,lineOfSight,combatEstimate,hqCatalog,headquarters,headquartersValid,commandLink,commandStatus,supportAvailable,activeAttachments,assignCommander,advancedValid,toggleAdvanced,prepared,smokeCover,supportCatalog,attachments,fieldAttachments,attachmentValid,assignAttachment,supportBonus,W,H,objectives,cell,neighbors,dist,fresh,alive,path,range,budget,planOpponent,resolve,supply,supplyRoute,migrate,consumption,logistics,fireFactor,spotted,contacts,updateIntel,visibleLog,scenarios,scenario,reachable,makeReport,makeSupplyReport};if(typeof module!=='undefined')module.exports=root.Game;
 })(typeof window==='undefined'?globalThis:window);
