@@ -1,0 +1,17 @@
+'use strict';
+const assert=require('node:assert/strict');
+const G=require('../game/engine.js');
+const intro=G.fresh('utah');
+const division=G.fresh('utah-division');
+assert.equal(G.scenario(intro).id,'utah');
+assert.equal(intro.units.filter(u=>u.side==='us'&&u.type==='infantry').length,3,'Introductory scenario should retain three infantry battalions');
+assert.equal(G.scenario(division).id,'utah-division');
+assert.equal(G.board(division).width,13);
+assert.equal(G.board(division).height,11);
+const infantry=division.units.filter(u=>u.side==='us'&&u.type==='infantry');
+assert.equal(infantry.length,9,'Division-scale scenario should have nine infantry battalions');
+for(const regiment of ['8','12','22'])assert.equal(infantry.filter(u=>u.name.endsWith('/'+regiment+' Infantry')).length,3);
+assert.equal(new Set(division.units.filter(u=>u.type!=='hq').map(u=>u.x+','+u.y)).size,division.units.filter(u=>u.type!=='hq').length,'No combat units should share a starting hex');
+assert.ok(G.headquartersValid(division),'Headquarters and command chain must validate');
+assert.ok(division.units.length<=G.unitLimit(division));
+console.log('Division setup checks passed');
