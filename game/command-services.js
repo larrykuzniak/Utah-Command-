@@ -38,7 +38,7 @@
     while(q.length){const p=q.shift(),key=p.x+','+p.y;if(seen.has(key))continue;seen.add(key);
       if(p.x===to.x&&p.y===to.y)return [{x:from.x,y:from.y},...p.path];
       for(const n of G.neighbors(p,s)){
-        const k=n.x+','+n.y;if(seen.has(k)||occupied.has(k)||!G.passage(s,p,n,{type:'supply'}))continue;
+        const k=n.x+','+n.y;if(seen.has(k)||occupied.has(k)||G.supplyInterdicted(s,n,side)||!G.passage(s,p,n,{type:'supply'}))continue;
         const terrain=G.cell(n.x,n.y,s);let cost=policy==='roads'?(['road','beach'].includes(terrain)?1:terrain==='marsh'?4:3):1;
         if(policy==='cautious'&&enemies.some(e=>G.dist(n,e)<=1))cost+=6;
         q.push({...n,cost:p.cost+cost,path:[...p.path,n]});
