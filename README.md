@@ -7,6 +7,11 @@ Command edition **0.23.1**. Adds the Boundaries map switch, estimated maneuver f
 
 Performance review and timing results: see `PERFORMANCE-LOG.md`.
 
+## Division-scale development scenario (October 2026)
+Select **Utah · 4th Infantry Division** in Scenarios to try a 13 × 11-hex experimental map with nine battalion counters (8th, 12th and 22nd Infantry), support, and opposition. The original **Utah · Beach Exits** introductory scenario is preserved.
+
+Higher Army/Corps HQ counters are hidden on the tactical map; their legacy engine objects and command logic remain for save compatibility. This is not yet the final three-regimental-HQ command implementation. Unit arrival times, map geography, and enemy deployment are game-design approximations rather than historically verified detailed D-Day positions. See `checks/division-setup-check.cjs` for intended setup checks (not yet executed in this environment).
+
 ## Windows
 See `READ-ME-FIRST.txt` for instructions. On a Windows 10/11 personal computer, launch `Start-Utah-Command.cmd` from this folder after extracting all files. The launcher uses PowerShell and a local browser server; it does not install an EXE.
 
