@@ -94,3 +94,10 @@ body.map-focus{overflow:hidden}body.map-focus .workspace{position:fixed;inset:0;
 .frontage-summary{flex-shrink:0;padding:6px 12px;background:#223c43;color:#e9f8ff;font-size:12px;line-height:1.4}.frontage-summary[hidden]{display:none}.frontage-detail{margin-top:10px;padding:10px;border:2px solid #a77c23;border-radius:5px;background:#fff4d0;color:#293d36;font-size:13px;line-height:1.5}.frontage-detail small{display:block;margin-top:6px}.flank-contact{color:#17642c}.flank-gap,.flank-open,.flank-staggered{color:#8c4712}.frontage-overlay path{fill:none;stroke-linecap:round;stroke-linejoin:round}.map-tools label:has(#boundaries-toggle){min-height:44px;display:inline-flex;align-items:center;gap:4px}
 
 .training-controls{background:#fff8dd;border:2px solid #a98439;border-radius:6px;padding:12px 16px;margin-bottom:16px}.training-controls summary{font-weight:800;cursor:pointer;min-height:36px}.training-controls p{font-size:12px;max-width:1050px}.training-actions,.training-options{display:flex;flex-wrap:wrap;gap:10px;margin:10px 0;align-items:end}.training-options label{display:flex;gap:6px;align-items:center;font-size:13px;min-height:44px}.training-options input[type=number]{width:70px;min-height:44px}.training-options select{min-height:44px;max-width:230px}
+
+/* v0.24.1: iPad landscape map aspect-ratio correction. Let the viewport grow with the full SVG rather than letterbox it beside a green field. */
+@media (min-width: 800px) and (max-width: 1400px) {
+  body:not(.map-focus) .workspace > .map-panel { height:auto; min-height:0; }
+  body:not(.map-focus) .map-scroll { flex:none; height:auto; min-height:0; aspect-ratio:var(--scenario-map-ratio, 750 / 650); overflow:hidden; }
+  body:not(.map-focus) #map { display:block; width:100%; height:100%; }
+}
