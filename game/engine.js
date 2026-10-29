@@ -6,7 +6,6 @@ const W=13,H=9, objectives=[{x:6,y:2,name:'Northern exit'},{x:4,y:4,name:'Crossr
 const scenarios=[
 {id:'utah',name:'Utah · Beach Exits',date:'6 June 1944',start:390,turns:12,supply:5,air:3,faction:'us',nation:'American',theme:'coast',edge:'UTAH BEACH',mode:'advance',difficulty:'Introductory',brief:'Lead the first wave inland. Secure all three exits, or hold two by the deadline for a limited victory.',objectives:objectives,reinforce:3},
 {id:'utah-division',name:'Utah · 4th Infantry Division',date:'6 June 1944 · division-scale design scenario',start:390,turns:20,supply:12,air:4,faction:'us',nation:'American',theme:'coast',edge:'UTAH BEACH',mode:'advance',difficulty:'Operational',width:13,height:11,brief:'Division-scale design scenario: command the 8th, 12th and 22nd Infantry Regiments through staged beachhead expansion. Starting deployment and German dispositions are game-design approximations, not a verified D-Day order of battle.',objectives:[{x:8,y:2,name:'Northern inland exit'},{x:6,y:5,name:'Central road junction'},{x:8,y:8,name:'Southern inland exit'}],reinforce:4},
-{id:'vii-corps',name:'VII Corps · Two-Division Advance',date:'7 June 1944 · experimental corps command',start:420,turns:20,supply:18,air:6,faction:'us',nation:'American',theme:'inland',edge:'ALLIED REAR AREA',mode:'advance',difficulty:'Corps / Experimental',width:17,height:13,brief:'Experimental VII Corps command exercise with the 4th and 90th Infantry Divisions. Direct two divisional groupings, allocate corps armor and artillery, and secure three inland objectives. Geography, deployment, force strengths and timing are game-design assumptions; this is not a verified historical order of battle.',objectives:[{x:6,y:2,name:'Northern road network'},{x:5,y:6,name:'Central crossroads'},{x:6,y:10,name:'Southern bridge approach'}],reinforce:5},
 {id:'inland',name:'Cotentin · Inland Advance',date:'7 June 1944 · hypothetical action',start:480,turns:14,supply:6,air:2,faction:'us',nation:'American',theme:'inland',edge:'EASTERN REAR AREA',mode:'advance',difficulty:'Intermediate',brief:'Push through hedgerows and villages toward the western road junctions. Secure all three objectives, or two by turn 14.',objectives:[{x:3,y:1,name:'Village'},{x:3,y:4,name:'Road junction'},{x:2,y:7,name:'Western bridge'}],reinforce:4},
 {id:'counterattack',name:'Utah · Hold the Beachhead',date:'6 June 1944 · hypothetical counterattack',start:840,turns:10,supply:4,air:2,faction:'us',nation:'American',theme:'coast',edge:'UTAH BEACH',mode:'hold',difficulty:'Challenging',brief:'German reserves are advancing. Hold at least two of the three exits at the end of turn 10. Keep three for a decisive defensive victory; there is no early victory for holding the flags.',objectives:objectives,reinforce:5},
 {id:'juno',name:'Juno · Canadian Advance',date:'6 June 1944 · hypothetical action',start:480,turns:12,supply:5,air:3,faction:'ca',nation:'Canadian',theme:'juno',edge:'JUNO BEACH',mode:'advance',difficulty:'Intermediate',brief:'Command Canadian infantry and armor from the beach toward three inland objectives. Secure all three, or two by turn 12. Canadian counters are red.',objectives:[{x:6,y:1,name:'Beach exit'},{x:4,y:4,name:'Village center'},{x:4,y:7,name:'Inland road'}],reinforce:3}
@@ -104,24 +103,6 @@ if(c.id==='utah-division'){
   const enemy=[['f',8,2],['g',6,5],['h',8,8],['i',3,5]];
   for(const [id,x,y] of enemy){Object.assign(s.units.find(v=>v.id===id),{x,y});}
   s.units.push(unit('de-n','German northern reserve','de',5,2),unit('de-s','German southern reserve','de',5,9));
-}
-if(c.id==='vii-corps'){
-  // Corps-level test: two divisions represented by battalion groupings, not independently stacked maps.
-  // Keep the established four-HQ engine for save/command compatibility.
-  const us=[
-    ['a','1/8 Infantry · 4th ID',15,1],['b','2/8 Infantry · 4th ID',15,3],['c','3/8 Infantry · 4th ID',15,5],
-    ['4-12a','1/12 Infantry · 4th ID',14,2],['4-12b','2/12 Infantry · 4th ID',14,4],['4-22a','1/22 Infantry · 4th ID',16,0],
-    ['90-357a','1/357 Infantry · 90th ID',15,7],['90-357b','2/357 Infantry · 90th ID',15,9],
-    ['90-358a','1/358 Infantry · 90th ID',14,8],['90-358b','2/358 Infantry · 90th ID',14,10],
-    ['90-359a','1/359 Infantry · 90th ID',16,11],['90-359b','2/359 Infantry · 90th ID',15,12]];
-  s.units=s.units.filter(u=>u.side==='de');
-  for(const [id,name,x,y] of us)s.units.push(unit(id,name,'us',x,y));
-  s.units.push(unit('d','Corps armored group','us',16,6,'tank'),unit('e','Corps artillery group','us',16,4,'artillery'));
-  const enemy=[['f',7,2,'Northern road defense'],['g',5,6,'Central crossroads defense'],['h',7,10,'Southern defense'],['i',3,6,'German gun battery']];
-  for(const [id,x,y,name] of enemy)Object.assign(s.units.find(u=>u.id===id),{x,y,name});
-  s.units.push(unit('de-res-n','German northern reserve','de',4,3),unit('de-res-s','German southern reserve','de',3,10));
-  s.commandMode=true;s.commandLevel='Corps';s.operationalRules=true;
-  s.log.unshift('DESIGN NOTE — VII Corps scenario is an experimental multi-division exercise; map, dispositions, timing and relative strengths are illustrative.');
 }
 if(c.id==='inland'){let positions=[[7,1],[7,4],[7,7],[6,5],[8,6],[3,1],[3,4],[2,7],[1,5]];s.units.forEach((u,i)=>{[u.x,u.y]=positions[i]});s.units.push(unit('l','German mobile reserve','de',1,2,'tank'))}
 if(c.id==='counterattack'){let positions=[[6,2],[4,4],[6,7],[6,5],[8,5],[2,1],[2,4],[2,7],[0,5]];s.units.forEach((u,i)=>{[u.x,u.y]=positions[i]});s.owners=['us','us','us'];s.units.push(unit('l','German armor reserve','de',1,3,'tank'),unit('m','German assault reserve','de',1,6))}
