@@ -125,13 +125,24 @@ $('headquarters-content').querySelectorAll('[data-hq-staff]').forEach(b=>b.oncli
 $('headquarters-content').querySelectorAll('[data-commander]').forEach(el=>el.onchange=()=>{const error=G.assignCommander(s,el.dataset.commander,el.value);if(!error){save();render()}$('headquarters-message').textContent=error||'Reporting assignment updated.'});
 }
 $('headquarters-open').onclick=()=>{renderHeadquarters();$('headquarters-message').textContent='';$('headquarters-dialog').showModal()};$('headquarters-close').onclick=()=>$('headquarters-dialog').close();$('command-overlay').onchange=()=>{s.commandOverlay=$('command-overlay').checked;save();render()};
+function finishExit(message){
+ exited=true; $('exit-dialog').close();
+ document.querySelectorAll('dialog').forEach(d=>{if(d.open)d.close()});
+ closeTour(); document.body.classList.add('game-exited');
+ $('exit-screen').hidden=false; $('exit-result').textContent=message;
+}
+function exitSaving(){
+ if(exited)return;
+ save();
+ finishExit('Game saved. You may close this Safari tab or leave the app. Resume saved game continues here; Start new game begins a fresh scenario.');
+}
 function exitWithoutSaving(){
 const writes=[...sessionSlots].map(([id,raw])=>[KEY+'-'+id,raw]).concat([[KEY,sessionMain],[KEY+'-view',sessionView]]),previous=new Map(),applied=[];
 try{if(!sessionWritable)throw Error('Starting saves were unavailable');for(const [key] of writes)previous.set(key,localStorage.getItem(key)??null);for(const [key,raw] of writes){if(raw===null)localStorage.removeItem(key);else localStorage.setItem(key,raw);applied.push(key)}}catch(e){for(const key of applied.reverse()){try{const raw=previous.get(key);if(raw===null)localStorage.removeItem(key);else localStorage.setItem(key,raw)}catch(ignored){}}$('exit-title').textContent='Could not restore the starting save. Keep playing or export your current game.';return}
 
-exited=true;$('exit-dialog').close();document.querySelectorAll?.('dialog').forEach(d=>{if(d.open)d.close()});closeTour();document.body?.classList.toggle('game-exited',true);$('exit-screen').hidden=false;$('exit-result').textContent='Your earlier saved positions have been restored. You can close this tab, resume your saved game, or start a new game.';
+finishExit('Changes from this session were discarded; earlier saved positions were restored. You can close this tab, resume the earlier save, or start a new game.');
 }
-$('exit-open').onclick=()=>{$('exit-title').textContent='Exit without saving?';$('exit-dialog').showModal()};$('exit-cancel').onclick=()=>$('exit-dialog').close();$('exit-confirm').onclick=exitWithoutSaving;$('exit-resume').onclick=()=>{if(typeof location!=='undefined')location.reload()};$('exit-new').onclick=()=>openScenarios(true);
+$('exit-open').onclick=()=>{$('exit-title').textContent='Close Utah Command';$('exit-dialog').showModal()};$('exit-cancel').onclick=()=>$('exit-dialog').close();$('exit-save').onclick=exitSaving;$('exit-confirm').onclick=exitWithoutSaving;$('exit-resume').onclick=()=>{if(typeof location!=='undefined')location.reload()};$('exit-new').onclick=()=>openScenarios(true);
 function renderOperations(){
 $('operational-toggle').checked=G.operational(s);$('operational-toggle').disabled=s.finished;$('utah-events-toggle').checked=s.utahEvents;$('utah-events-toggle').disabled=s.finished;
 const fields=G.alive(s).filter(u=>u.side==='us'&&u.type!=='hq'),u=fields.find(u=>u.id===selected),state=planning();
