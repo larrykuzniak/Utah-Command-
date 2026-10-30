@@ -212,7 +212,7 @@ $('auto-report').checked=s.autoReport;if(!$('report-dialog').open)$('report-dial
 
 $('scenarios').onclick=openScenarios;$('scenario-close').onclick=()=>$('scenarios-dialog').close();$('sitrep').onclick=()=>showReport();$('report-close').onclick=()=>$('report-dialog').close();$('report-history').onchange=()=>showReport(+$('report-history').value);$('auto-report').onchange=()=>{s.autoReport=$('auto-report').checked;save()};
 function resolveBattle(decisions={}){if(exited||s.finished)return;G.resolve(s,decisions);save();render();if(s.autoReport)showReport()}
-function openCommand(){renderCommandPanel();$('command-dialog').showModal()}
+function openCommand(){if(s.commandLevel!=='Division'){s.commandLevel='Division';save()}renderCommandPanel();$('command-dialog').showModal()}
 function renderCommandPanel(){
  $('command-enabled').checked=s.commandMode;$('command-level').value=s.commandLevel;$('support-policy').value=s.supportPolicy;
  const units=G.alive(s).filter(v=>v.side==='us'&&['infantry','tank'].includes(v.type));if(!units.some(v=>v.id===selected))selected=units[0]?.id||null;
@@ -241,7 +241,7 @@ function reviewCommandTurn(force=false){const plan=G.commandPlan(s);if(!s.comman
 $('command-open').onclick=openCommand;$('command-close').onclick=()=>$('command-dialog').close();
 $('command-unit').onchange=()=>{selected=$('command-unit').value;mode='move';render();renderCommandPanel()};$('standing-mission').onchange=()=>fillMissionGoals();
 $('command-enabled').onchange=()=>{s.commandMode=$('command-enabled').checked;save();render();renderCommandPanel()};
-$('command-level').onchange=()=>{s.commandLevel=$('command-level').value;save();render();renderCommandPanel()};$('support-policy').onchange=()=>{s.supportPolicy=$('support-policy').value;save();render();renderCommandPanel()};
+$('command-level').onchange=()=>{s.commandLevel='Division';$('command-level').value='Division';save();render();renderCommandPanel()};$('support-policy').onchange=()=>{s.supportPolicy=$('support-policy').value;save();render();renderCommandPanel()};
 $('command-review-open').onclick=()=>{$('command-dialog').close();reviewCommandTurn(true)};
 $('coordinate-assign').onclick=()=>{const ids=[...$('coordinated-supporters').querySelectorAll('[data-coordinated]')].filter(e=>e.checked).map(e=>e.dataset.coordinated);const error=['seize','defend'].includes($('standing-mission').value)?G.assignCoordinatedAttack(s,selected,ids,+$('mission-goal').value,$('mission-risk').value):'Choose an objective mission above first.';if(!error){save();render();renderCommandPanel()}$('mission-message').textContent=error||'Coordinated attack assigned. Main effort and supporting elements share the objective and wait for readiness.'};
 $('mission-group').onclick=()=>{const type=$('standing-mission').value,mission={type,risk:$('mission-risk').value,...(['seize','defend'].includes(type)?{objective:+$('mission-goal').value}:{target:$('mission-goal').value})};let count=0;for(const u of G.alive(s).filter(v=>v.side==='us'&&['infantry','tank'].includes(v.type))){if(['support','reserve'].includes(type)&&u.id===mission.target)continue;if(!G.assignMission(s,u.id,mission))count++}if(count){s.commandMode=true;save();render();renderCommandPanel()}$('mission-message').textContent=count+' formations received the standing mission. Disconnected formations execute standing intent locally; coordinated support needs its HQ links.'};
