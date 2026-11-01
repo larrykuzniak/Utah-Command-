@@ -1,0 +1,527 @@
+(function(root){
+let commandServices=null;
+function installCommandServices(services){commandServices=services}
+
+const W=13,H=9, objectives=[{x:6,y:2,name:'Northern exit'},{x:4,y:4,name:'Crossroads'},{x:6,y:7,name:'Southern exit'}];
+const scenarios=[
+{id:'utah',name:'Utah · Beach Exits',date:'6 June 1944',start:390,turns:12,supply:5,air:3,faction:'us',nation:'American',theme:'coast',edge:'UTAH BEACH',mode:'advance',difficulty:'Introductory',brief:'Lead the first wave inland. Secure all three exits, or hold two by the deadline for a limited victory.',objectives:objectives,reinforce:3},
+{id:'utah-division',name:'Utah · 4th Infantry Division',date:'6 June 1944 · division-scale design scenario',start:390,turns:20,supply:12,air:4,faction:'us',nation:'American',theme:'coast',edge:'UTAH BEACH',mode:'advance',difficulty:'Operational',width:13,height:11,brief:'Division-scale design scenario: command the 8th, 12th and 22nd Infantry Regiments through staged beachhead expansion. Starting deployment and German dispositions are game-design approximations, not a verified D-Day order of battle.',objectives:[{x:8,y:2,name:'Northern inland exit'},{x:6,y:5,name:'Central road junction'},{x:8,y:8,name:'Southern inland exit'}],reinforce:4},
+{id:'inland',name:'Cotentin · Inland Advance',date:'7 June 1944 · hypothetical action',start:480,turns:14,supply:6,air:2,faction:'us',nation:'American',theme:'inland',edge:'EASTERN REAR AREA',mode:'advance',difficulty:'Intermediate',brief:'Push through hedgerows and villages toward the western road junctions. Secure all three objectives, or two by turn 14.',objectives:[{x:3,y:1,name:'Village'},{x:3,y:4,name:'Road junction'},{x:2,y:7,name:'Western bridge'}],reinforce:4},
+{id:'counterattack',name:'Utah · Hold the Beachhead',date:'6 June 1944 · hypothetical counterattack',start:840,turns:10,supply:4,air:2,faction:'us',nation:'American',theme:'coast',edge:'UTAH BEACH',mode:'hold',difficulty:'Challenging',brief:'German reserves are advancing. Hold at least two of the three exits at the end of turn 10. Keep three for a decisive defensive victory; there is no early victory for holding the flags.',objectives:objectives,reinforce:5},
+{id:'juno',name:'Juno · Canadian Advance',date:'6 June 1944 · hypothetical action',start:480,turns:12,supply:5,air:3,faction:'ca',nation:'Canadian',theme:'juno',edge:'JUNO BEACH',mode:'advance',difficulty:'Intermediate',brief:'Command Canadian infantry and armor from the beach toward three inland objectives. Secure all three, or two by turn 12. Canadian counters are red.',objectives:[{x:6,y:1,name:'Beach exit'},{x:4,y:4,name:'Village center'},{x:4,y:7,name:'Inland road'}],reinforce:3}
+];
+// Additional original scenarios use illustrative force mixes rather than historical orders of battle.
+scenarios.push(
+{id:'omaha',name:'Omaha · Open the Exits',date:'Normandy · illustrative action',start:390,turns:14,supply:5,air:3,faction:'us',nation:'American',theme:'coast',edge:'OMAHA BEACH',mode:'advance',difficulty:'Challenging',brief:'A narrow beachhead faces reinforced inland defenses. Clear the exits before the deadline.',objectives:[{x:6,y:1,name:'Northern draw'},{x:4,y:4,name:'Inland junction'},{x:6,y:7,name:'Southern draw'}],reinforce:4,preset:'omaha'},
+{id:'airborne',name:'Airborne · Linkup',date:'Normandy · hypothetical linkup',start:420,turns:14,supply:6,air:2,faction:'us',nation:'American',theme:'inland',edge:'EASTERN APPROACH',mode:'advance',difficulty:'Intermediate',brief:'Scattered airborne troops must link with forces advancing from the east. Capture the village, junction, and crossing.',objectives:[{x:2,y:1,name:'Airborne village'},{x:4,y:4,name:'Linkup junction'},{x:2,y:7,name:'Bridge'}],reinforce:4,preset:'airborne'},
+{id:'carentan',name:'Causeways · Carentan Approach',date:'Normandy · illustrative causeway battle',start:480,turns:16,supply:6,air:2,faction:'us',nation:'American',theme:'inland',edge:'EASTERN SUPPLY',mode:'advance',difficulty:'Challenging',brief:'Roads and crossings channel the advance. Use engineers, artillery, and reserves to open the western approaches.',objectives:[{x:3,y:1,name:'Northern approach'},{x:3,y:4,name:'Causeway junction'},{x:2,y:7,name:'Southern crossing'}],reinforce:5,preset:'carentan'},
+{id:'mortain',name:'Mortain · Hold the Corridor',date:'Normandy · hypothetical counterstroke',start:840,turns:14,supply:5,air:3,faction:'us',nation:'American',theme:'inland',edge:'EASTERN REAR',mode:'hold',difficulty:'Challenging',brief:'German armor threatens a narrow corridor. Retain at least two objectives through the final turn.',objectives:[{x:6,y:2,name:'Northern ridge'},{x:4,y:4,name:'Corridor'},{x:6,y:7,name:'Southern route'}],reinforce:4,preset:'mortain'}
+);
+function scenarioSpecValid(c){const land=['field','road','hedgerow','marsh','beach','town'];return !!c&&c.schema==='utah-scenario-v1'&&typeof c.id==='string'&&/^custom-[a-z0-9-]{1,50}$/.test(c.id)&&typeof c.name==='string'&&c.name.length>0&&c.name.length<=60&&typeof c.brief==='string'&&c.brief.length<=400&&typeof c.date==='string'&&c.date.length<=80&&Number.isInteger(c.turns)&&c.turns>=4&&c.turns<=20&&Number.isInteger(c.start)&&c.start>=0&&c.start<=1200&&Number.isInteger(c.supply)&&c.supply>=2&&c.supply<=20&&Number.isInteger(c.air)&&c.air>=0&&c.air<=6&&['us','ca','uk'].includes(c.faction)&&['advance','hold'].includes(c.mode)&&c.theme==='custom'&&Number.isInteger(c.riverX)&&c.riverX>=-1&&c.riverX<=6&&Array.isArray(c.bridgeRows)&&c.bridgeRows.length<=3&&new Set(c.bridgeRows).size===c.bridgeRows.length&&c.bridgeRows.every(y=>Number.isInteger(y)&&y>=0&&y<9)&&Array.isArray(c.terrain)&&c.terrain.length===9&&c.terrain.every(row=>Array.isArray(row)&&row.length===9&&row.every(t=>land.includes(t)))&&Array.isArray(c.objectives)&&c.objectives.length===3&&new Set(c.objectives.map(o=>o.x+','+o.y)).size===3&&c.objectives.every(o=>Number.isInteger(o.x)&&o.x>=0&&o.x<9&&Number.isInteger(o.y)&&o.y>=0&&o.y<9&&typeof o.name==='string'&&o.name.length>0&&o.name.length<=40)&&Array.isArray(c.deployment)&&c.deployment.length>=2&&c.deployment.length<=20&&c.deployment.some(u=>u.side==='us')&&c.deployment.some(u=>u.side==='de')&&new Set(c.deployment.map(u=>u.x+','+u.y)).size===c.deployment.length&&c.deployment.every(u=>['us','de'].includes(u.side)&&['infantry','tank','artillery'].includes(u.type)&&Number.isInteger(u.x)&&u.x>=0&&u.x<9&&Number.isInteger(u.y)&&u.y>=0&&u.y<9&&typeof u.name==='string'&&u.name.length>0&&u.name.length<=50&&Number.isInteger(u.hp)&&u.hp>=1&&u.hp<=10)&&Array.isArray(c.initialOwners)&&c.initialOwners.length===3&&c.initialOwners.every(o=>o===null||['us','de'].includes(o))&&Number.isInteger(c.reinforce)&&c.reinforce===99}
+function registerScenario(spec){if(!scenarioSpecValid(spec))return false;const c=JSON.parse(JSON.stringify(spec));Object.assign(c,{custom:true,difficulty:'Custom',nation:c.faction==='ca'?'Canadian':c.faction==='uk'?'British':'American',edge:'EASTERN SUPPLY'});const i=scenarios.findIndex(v=>v.id===c.id);if(i>=0)scenarios[i]=c;else scenarios.push(c);return true}
+function scenario(s){if(s&&typeof s==='object'&&scenarioSpecValid(s.scenarioSpec))return s.scenarioSpec;return scenarios.find(c=>c.id===(typeof s==='string'?s:s?.scenarioId))||scenarios[0]}
+function board(s){const c=scenario(s);return {width:c.width||9,height:c.height||9,totalWidth:(c.width||9)+4}}
+function unitLimit(s){return scenario(s).sandbox?120:30}
+function cell(x,y,id='utah'){let c=scenario(id),b=board(id);if(x<0||y<0||x>=b.totalWidth||y>=b.height)return 'off';if(x>=b.width)return 'rear';if(c.terrain)return c.terrain[y][x];if(x===b.width-1)return c.theme==='inland'?'road':'beach';if(c.theme==='inland'){if(c.objectives.some(o=>o.x===x&&o.y===y))return 'town';if(y===4||y===7||x===3)return 'road';return (x+y)%3===0?'field':'hedgerow'}if(c.theme==='juno'){if(c.objectives.some(o=>o.x===x&&o.y===y))return 'town';if(y===4||x===4||y===1)return 'road';return (x*2+y)%4===0?'hedgerow':'field'}if((x===3&&y!==4&&y!==7)||(x===5&&y===6))return 'marsh';if(y===4||y===7||x===6)return 'road';if((x+y*3)%7<2)return 'hedgerow';return 'field'}
+function neighbors(p,id='utah'){let d=p.y%2?[[1,0],[-1,0],[0,-1],[1,-1],[0,1],[1,1]]:[[1,0],[-1,0],[-1,-1],[0,-1],[-1,1],[0,1]];return d.map(([x,y])=>({x:p.x+x,y:p.y+y})).filter(p=>!['off','sea','rear'].includes(cell(p.x,p.y,id)))}
+function dist(a,b){const ax=a.x-(a.y-(a.y&1))/2,bx=b.x-(b.y-(b.y&1))/2;return (Math.abs(ax-bx)+Math.abs(a.y-b.y)+Math.abs(ax+a.y-bx-b.y))/2}
+function unit(id,name,side,x,y,type='infantry'){return {id,name,side,x,y,type,hp:10,fatigue:0,stock:2,priority:'normal',supplyRequest:1,routePolicy:'shortest',supplyEntry:'auto',supplied:true,order:null}}
+// Finite, illustrative off-map support pools; field attachments retain their own counters.
+const supportCatalog=[
+{id:'div-armor',echelon:'Division',name:'Divisional tank company',kind:'armor',bonus:1,effect:'+1 attack loss'},
+{id:'div-engineers',echelon:'Division',name:'Divisional combat engineers',kind:'engineers',bonus:1,effect:'Ignore 1 point of enemy cover'},
+{id:'div-medical',echelon:'Division',name:'Divisional medical company',kind:'medical',bonus:1,effect:'+1 strength recovery when resting'},
+{id:'corps-guns',echelon:'Corps',name:'Corps medium artillery battalion',kind:'artillery',bonus:1,effect:'+1 attack loss'},
+{id:'corps-at',echelon:'Corps',name:'Corps tank destroyer company',kind:'antitank',bonus:2,effect:'+2 attack losses against armor'},
+{id:'corps-engineers',echelon:'Corps',name:'Corps engineer battalion',kind:'engineers',bonus:1,effect:'Ignore 1 point of enemy cover'},
+{id:'army-guns',echelon:'Army',name:'Army heavy artillery group',kind:'artillery',bonus:2,effect:'+2 attack losses'},
+{id:'army-medical',echelon:'Army',name:'Army field hospital detachment',kind:'medical',bonus:1,effect:'+1 strength recovery when resting'},
+{id:'army-recon',echelon:'Army',name:'Army reconnaissance detachment',kind:'recon',bonus:1,effect:'+1 spotting hex with reserves'}
+];
+function attachments(s,u){return (s.supportAssets||[]).filter(a=>a.assignedTo===u.id).map(a=>({...supportCatalog.find(c=>c.id===a.id),assignedTo:a.assignedTo}))}
+function fieldAttachments(s,u){return alive(s).filter(v=>v.attachedTo===u.id)}
+function attachmentValid(s){
+if(!Array.isArray(s.units)||!Array.isArray(s.supportAssets)||s.supportAssets.length!==supportCatalog.length||new Set(s.supportAssets.map(a=>a?.id)).size!==supportCatalog.length)return false;
+const host=id=>s.units.some(u=>u.id===id&&u.side==='us'&&u.type!=='hq'&&u.hp>0);
+if(!s.supportAssets.every(a=>a&&supportCatalog.some(c=>c.id===a.id)&&(a.assignedTo===null||host(a.assignedTo))))return false;
+if(s.units.some(u=>u.attachedTo!==null&&(u.side!=='us'||!['tank','artillery'].includes(u.type)||!s.units.some(h=>h.id===u.attachedTo&&h.side==='us'&&h.type==='infantry'&&h.hp>0))))return false;
+return s.units.every(u=>attachments(s,u).length<=2&&fieldAttachments(s,u).length<=2);
+}
+function assignAttachment(s,id,hostId,field=false){
+migrate(s);if(s.finished)return 'The battle has ended.';
+const host=alive(s).find(u=>u.id===hostId&&u.side==='us');
+if(host?.type==='hq')return 'Assign reserve support to a field formation, not to headquarters.';
+if(hostId!==null&&!host)return 'Choose a living Allied formation.';
+const item=field?s.units.find(u=>u.id===id&&u.side==='us'&&u.hp>0&&['tank','artillery'].includes(u.type)):s.supportAssets.find(a=>a.id===id);
+if(!item)return 'Support unit unavailable.';
+const key=field?'attachedTo':'assignedTo';if(item[key]===hostId)return null;
+if(hostId!==null&&item[key])return 'Already assigned to '+(s.units.find(u=>u.id===item[key])?.name||'another formation')+'. Release it from that formation before attaching elsewhere.';
+if(host&&field&&host.type!=='infantry')return 'Field tanks and artillery attach to infantry formations.';
+if(host&&(field?fieldAttachments(s,host):attachments(s,host)).length>=2)return 'Release an attachment first (two per formation in each pool).';
+item[key]=hostId;if(field&&host)item.commandId=host.commandId;
+const name=field?item.name:supportCatalog.find(a=>a.id===id).name;
+s.log=['ATTACHMENTS — '+name+(host?' assigned to '+host.name: ' released to reserve')+'.',...s.log].slice(0,120);
+return null;
+}
+function supportBonus(s,u,t,cover){if(u.side!=='us'||u.stock<1||!supply(s,u))return 0;const assets=activeAttachments(s,u);return assets.reduce((n,a)=>n+(a.kind==='armor'||a.kind==='artillery'?a.bonus:a.kind==='antitank'&&t.type==='tank'?a.bonus:0),0)+Math.min(cover,assets.filter(a=>a.kind==='engineers').length)}
+function releaseLostAttachments(s,events){for(const a of s.supportAssets){if(a.assignedTo&&!alive(s).some(u=>u.id===a.assignedTo)){events.push('ATTACHMENTS — '+supportCatalog.find(c=>c.id===a.id).name+' returned to reserve after host losses.');a.assignedTo=null}}for(const u of s.units){if(u.attachedTo&&(u.hp<=0||!alive(s).some(h=>h.id===u.attachedTo)))u.attachedTo=null}}
+const hqCatalog=[
+{id:'hq-regiment',echelon:'Regiment',radius:3,parentId:'hq-division',x:7,y:4},
+{id:'hq-division',echelon:'Division',radius:4,parentId:'hq-corps',x:7,y:3},
+{id:'hq-corps',echelon:'Corps',radius:6,parentId:'hq-army',x:8,y:0},
+{id:'hq-army',echelon:'Army',radius:8,parentId:null,x:7,y:0}
+];
+function headquartersPositions(s){const troops=alive(s).filter(u=>u.side==='us'&&['infantry','tank'].includes(u.type)),fallback=alive(s).filter(u=>u.side==='us'&&u.type!=='hq'),rear=Math.max(0,...(troops.length?troops:fallback).map(u=>u.x))+1,used=new Set(alive(s).filter(u=>u.type!=='hq').map(u=>u.x+','+u.y)),result=new Map();for(const [i,c] of hqCatalog.entries()){const preferred={x:Math.min(board(s).totalWidth-1,rear+i),y:c.y},places=[];for(let x=preferred.x;x<board(s).totalWidth;x++)for(let y=0;y<board(s).height;y++)if(!used.has(x+','+y))places.push({x,y});places.sort((a,b)=>a.x-b.x||Math.abs(a.y-preferred.y)-Math.abs(b.y-preferred.y)||a.y-b.y);const p=places[0];if(p){used.add(p.x+','+p.y);result.set(c.id,p)}}return result}
+function deployHeadquarters(s){const positions=headquartersPositions(s);for(const c of hqCatalog){if(s.units.some(u=>u.id===c.id))continue;const p=positions.get(c.id);if(!p)continue;const h=unit(c.id,c.echelon+' Headquarters','us',p.x,p.y,'hq');Object.assign(h,{echelon:c.echelon,parentId:c.parentId,commandRadius:c.radius,commandId:null,nation:scenario(s).faction});s.units.push(h)}}
+function correctHeadquartersPlacement(s){if(s.hqPlacementVersion===1)return;const positions=headquartersPositions(s);let moved=false;for(const h of headquarters(s)){const p=positions.get(h.id);if(h.hp<=0||!p)continue;if(h.x!==p.x||h.y!==p.y)moved=true;h.x=p.x;h.y=p.y;h.order=null}s.hqPlacementVersion=1;if(moved)s.log=['COMMAND SETUP — Headquarters repositioned behind the infantry. The eastern rear command area is an abstract staging area.',...s.log].slice(0,120)}
+function movementNeighbors(s,u,p){if(u.type!=='hq')return neighbors(p,s);if(p.x>=board(s).width)return Array.from({length:board(s).height},(_,y)=>({x:board(s).width-1,y})).filter(n=>!['off','sea','rear'].includes(cell(n.x,n.y,s)));const offsets=p.y%2?[[1,0],[-1,0],[0,-1],[1,-1],[0,1],[1,1]]:[[1,0],[-1,0],[-1,-1],[0,-1],[-1,1],[0,1]];const next=offsets.map(([x,y])=>({x:p.x+x,y:p.y+y})).filter(n=>n.x>=0&&n.x<board(s).totalWidth&&n.y>=0&&n.y<board(s).height&&(n.x>=board(s).width||!['off','sea','rear'].includes(cell(n.x,n.y,s))));if(p.x===board(s).width-1)for(let x=board(s).width;x<board(s).totalWidth;x++)for(let y=0;y<board(s).height;y++)if(!next.some(n=>n.x===x&&n.y===y))next.push({x,y});return next}
+
+function headquarters(s){return s.units.filter(u=>u.type==='hq')}
+function headquartersValid(s){return s.hqVersion===2&&typeof s.commandOverlay==='boolean'&&headquarters(s).length===4&&hqCatalog.every(c=>s.units.some(u=>u.id===c.id&&u.type==='hq'&&u.side==='us'&&u.echelon===c.echelon&&u.parentId===c.parentId&&u.commandRadius===c.radius&&u.commandId===null))&&s.units.every(u=>u.side!=='us'||u.type==='hq'||hqCatalog.some(c=>c.id===u.commandId))}
+function hqRouteOpen(s,h){if(h.x>=board(s).width-1)return true;const q=[h],seen=new Set();while(q.length){const p=q.shift(),k=p.x+','+p.y;if(seen.has(k))continue;seen.add(k);if(p.x===board(s).width-1)return true;for(const n of neighbors(p,s))if(passage(s,p,n,{type:'supply'})&&!alive(s).some(e=>e.side==='de'&&e.x===n.x&&e.y===n.y))q.push(n)}return false}
+function commandLink(s,child,parent){if(!parent||parent.hp<=0)return {ok:false,reason:'Headquarters eliminated'};if(parent.hp<=3)return {ok:false,reason:parent.echelon+' HQ disrupted (strength 3 or less)'};if(s.advancedRules&&parent.suppression>=2)return {ok:false,reason:parent.echelon+' HQ pinned'};if(parent.order?.type==='move')return {ok:false,reason:parent.echelon+' HQ relocating'};if(!hqRouteOpen(s,parent))return {ok:false,reason:parent.echelon+' HQ isolated'};const distance=dist(child,parent);return {ok:distance<=parent.commandRadius,reason:distance<=parent.commandRadius?'Link open':parent.echelon+' HQ out of range ('+distance+'/'+parent.commandRadius+')',distance}}
+function commandStatus(s,u,echelon='Army'){
+if(u.side!=='us')return {ok:true,reason:'German command abstracted',chain:[]};
+if(u.type==='hq'){const self=commandLink(s,u,u);if(!self.ok)return {...self,chain:[]}}
+let child=u,parent=s.units.find(h=>h.id===(u.type==='hq'?u.parentId:u.commandId)),chain=[];
+if(u.type==='hq'&&u.echelon===echelon)return {ok:u.hp>3&&hqRouteOpen(s,u)&&u.order?.type!=='move'&&(!s.advancedRules||u.suppression<2),reason:'Headquarters status',chain};
+if(u.type==='hq'&&u.echelon==='Army')return {ok:u.hp>3&&hqRouteOpen(s,u)&&u.order?.type!=='move'&&(!s.advancedRules||u.suppression<2),reason:'Army command',chain};
+const ranks={Regiment:-1,Division:0,Corps:1,Army:2};if(parent&&ranks[parent.echelon]>ranks[echelon])return {ok:false,reason:'Not assigned through '+echelon+' HQ',chain};
+for(let n=0;n<4;n++){if(!parent)return {ok:false,reason:'Headquarters unavailable',chain};const link=commandLink(s,child,parent);chain.push({from:child.id,to:parent.id,...link});if(!link.ok)return {...link,chain};if(parent.echelon===echelon)return {ok:true,reason:'In '+echelon+' command',chain};child=parent;parent=s.units.find(h=>h.id===parent.parentId)}return {ok:false,reason:'Command chain incomplete',chain}}
+function supportAvailable(s,u,a){return !s.advancedRules||commandStatus(s,u,a.echelon).ok}
+function activeAttachments(s,u){return attachments(s,u).filter(a=>supportAvailable(s,u,a))}
+function assignCommander(s,id,commander){const u=alive(s).find(u=>u.id===id&&u.side==='us'&&u.type!=='hq'),h=alive(s).find(u=>u.id===commander&&u.type==='hq');if(s.finished||!u||!h)return 'Choose an operational formation and headquarters.';u.commandId=h.id;s.log=['COMMAND — '+u.name+' assigned directly to '+h.name+'.',...s.log].slice(0,120);return null}
+function fresh(id='utah'){let c=scenario(id),s={version:1,allocationMode:'automatic',scenarioId:c.id,autoReport:true,reports:[],supplyReports:[],fog:true,weather:'clear',intel:[],intelObjectives:[null,null,null],airRemaining:c.air,airTarget:null,turn:1,seed:19440606,finished:false,result:'',owners:[null,null,null],log:[c.name+' — '+c.brief],units:[unit('a','1/8 Infantry','us',8,2),unit('b','2/8 Infantry','us',8,4),unit('c','3/8 Infantry','us',8,7),unit('d','70th Tank det.','us',7,5,'tank'),unit('e','29th Field Art.','us',8,6,'artillery'),unit('f','Coastal position N','de',6,2),unit('g','Reserve company','de',4,4),unit('h','Coastal position S','de',6,7),unit('i','German gun section','de',2,5,'artillery')]};
+if(c.id==='utah-division'){
+  // Separate operational-scale sandbox; keep the original regimental tutorial unchanged.
+  const deployment=[['a',12,2,'1/8 Infantry'],['b',12,4,'2/8 Infantry'],['c',12,6,'3/8 Infantry'],
+    ['12a',12,7,'1/12 Infantry'],['12b',11,8,'2/12 Infantry'],['12c',12,9,'3/12 Infantry'],
+    ['22a',11,0,'1/22 Infantry'],['22b',12,0,'2/22 Infantry'],['22c',12,10,'3/22 Infantry']];
+  for(const [id,x,y,name] of deployment){let u=s.units.find(v=>v.id===id);if(!u){u=unit(id,name,'us',x,y);s.units.push(u)}Object.assign(u,{name,x,y,commandId:'hq-regiment'});}
+  Object.assign(s.units.find(v=>v.id==='d'),{x:11,y:5,name:'70th Tank battalion det.'});
+  Object.assign(s.units.find(v=>v.id==='e'),{x:11,y:3,name:'4th Division artillery group'});
+  const enemy=[['f',8,2],['g',6,5],['h',8,8],['i',3,5]];
+  for(const [id,x,y] of enemy){Object.assign(s.units.find(v=>v.id===id),{x,y});}
+  s.units.push(unit('de-n','German northern reserve','de',5,2),unit('de-s','German southern reserve','de',5,9));
+}
+if(c.id==='inland'){let positions=[[7,1],[7,4],[7,7],[6,5],[8,6],[3,1],[3,4],[2,7],[1,5]];s.units.forEach((u,i)=>{[u.x,u.y]=positions[i]});s.units.push(unit('l','German mobile reserve','de',1,2,'tank'))}
+if(c.id==='counterattack'){let positions=[[6,2],[4,4],[6,7],[6,5],[8,5],[2,1],[2,4],[2,7],[0,5]];s.units.forEach((u,i)=>{[u.x,u.y]=positions[i]});s.owners=['us','us','us'];s.units.push(unit('l','German armor reserve','de',1,3,'tank'),unit('m','German assault reserve','de',1,6))}
+if(c.id==='juno'){let names=['Canadian infantry A','Canadian infantry B','Canadian infantry C','Canadian armored det.','Canadian field battery'];s.units.filter(u=>u.side==='us').forEach((u,i)=>u.name=names[i]);s.units.find(u=>u.id==='f').y=1;s.units.find(u=>u.id==='h').x=4}
+if(c.preset==='omaha'){s.units.push(unit('l','German inland armor','de',3,3,'tank'),unit('m','German northern reserve','de',4,1));s.units[0].hp=8;s.units[2].hp=8}
+if(c.preset==='airborne'){s.units[0].x=2;s.units[0].y=1;s.units[0].name='Airborne village detachment';s.units[2].x=4;s.units[2].y=7;s.units[2].name='Airborne bridge detachment';s.units[5].x=1;s.units[5].y=2}
+if(c.preset==='carentan'){s.units[5].x=3;s.units[5].y=1;s.units[6].x=3;s.units[6].y=4;s.units[7].x=2;s.units[7].y=7;s.units[8].x=1;s.units[8].y=5}
+if(c.preset==='mortain'){const positions=[[6,2],[4,4],[6,7],[6,5],[8,5],[2,1],[2,4],[2,7],[0,5]];s.units.forEach((u,i)=>{[u.x,u.y]=positions[i]});s.owners=['us','us','us'];s.units.push(unit('l','German armored column','de',1,3,'tank'),unit('m','German assault group','de',1,6))}
+if(c.custom){s.scenarioSpec=JSON.parse(JSON.stringify(c));s.units=c.deployment.map((v,i)=>Object.assign(unit('custom-unit-'+i,v.name,v.side,v.x,v.y,v.type),{hp:v.hp}));s.owners=[...c.initialOwners]}
+if(c.sandbox){s.units=c.deployment.map(v=>Object.assign(unit(v.id,v.name,v.side,v.x,v.y,v.type),v));s.owners=['de','de','de'];s.commandMode=true;s.commandLevel='Army';s.advancedRules=true;s.operationalRules=true;s.utahEvents=false;s.autoReport=false;s.damagedBridges=['bridge-8'];s.sandbox={unlimitedAir:true,autoResupply:false,enemyMode:'static',sequence:0};}
+for(let u of s.units)u.nation=u.side==='de'?'de':c.faction;const freshState=migrate(s);if(commandServices)commandServices.newGame(freshState);return freshState}
+function alive(s){return s.units.filter(u=>u.hp>0)}
+// Search-local priority queue. Sequence preserves the existing stable-sort tie order.
+// Nothing is cached between searches: moves, losses, and weather apply immediately.
+class RouteQueue {
+  constructor(first, compare) {
+    this.items = [];
+    this.compare = compare;
+    this.sequence = 0;
+    this.push(first);
+  }
+  get length() { return this.items.length; }
+  before(a, b) {
+    return this.compare(a.value, b.value) || a.sequence - b.sequence;
+  }
+  push(value) {
+    const node = {value, sequence: this.sequence++}, items = this.items;
+    let i = items.length;
+    items.push(node);
+    while (i > 0) {
+      const parent = (i - 1) >> 1;
+      if (this.before(items[parent], node) <= 0) break;
+      items[i] = items[parent];
+      i = parent;
+    }
+    items[i] = node;
+  }
+  shift() {
+    const items = this.items, first = items[0], last = items.pop();
+    if (items.length) {
+      let i = 0;
+      while (i * 2 + 1 < items.length) {
+        let child = i * 2 + 1;
+        if (child + 1 < items.length && this.before(items[child + 1], items[child]) < 0) child++;
+        if (this.before(last, items[child]) <= 0) break;
+        items[i] = items[child];
+        i = child;
+      }
+      items[i] = last;
+    }
+    return first.value;
+  }
+}
+function occupiedHexes(s,u){return new Set(s.units.filter(v=>v.hp>0&&v.id!==u.id).map(v=>v.x+','+v.y))}
+function path(s,u,target){const queue=new RouteQueue({x:u.x,y:u.y,cost:0,path:[]},(a,b)=>a.cost-b.cost),seen=new Set(),occupied=occupiedHexes(s,u);while(queue.length){let p=queue.shift(),key=p.x+','+p.y;if(seen.has(key))continue;seen.add(key);if(p.x===target.x&&p.y===target.y)return p;if(p.cost>0&&enemyZone(s,p,u.side))continue;for(let n of movementNeighbors(s,u,p)){if(!stepAllowed(s,u,p,n)||occupied.has(n.x+','+n.y))continue;queue.push({...n,cost:p.cost+moveCost(s,u,p,n),path:[...p.path,n]})}}return null}
+function range(u){if(u.type==='hq')return 0;return u.type==='artillery'?4:1}
+function budget(u){if(u.type==='hq')return u.rulesAdvanced&&u.suppression>=2?1:2;return Math.max(1,(u.type==='tank'?4:u.type==='artillery'?2:3)-(u.fatigue>=3?1:0)-(u.rulesAdvanced&&u.suppression>=2?1:0)-(u.operational&&u.cohesion<40?1:0)-((u.stock===undefined?u.supplied:u.stock>=2)?0:1))}
+// Supply interdiction: operational infantry and armor threaten adjacent hexes.
+// A capable friendly combat unit on the threatened hex provides convoy security.
+// Do not expose hidden enemy positions through the routing preview.
+function supplyInterdicted(s,p,side){
+  if(!operational(s))return false;
+  const troops=alive(s);
+  const hostile=troops.some(e=>e.side!==side&&['infantry','tank'].includes(e.type)&&e.hp>0&&e.suppression<2&&e.cohesion>=40&&dist(e,p)<=1);
+  if(!hostile)return false;
+  return !troops.some(f=>f.side===side&&['infantry','tank'].includes(f.type)&&f.hp>0&&f.suppression<2&&f.cohesion>=40&&f.x===p.x&&f.y===p.y);
+}
+function edgeSupplyRoute(s,u){if(u.type==='hq'&&u.x>=board(s).width)return [{x:u.x,y:u.y},{x:board(s).width-1,y:u.y}];
+const policy=u.side==='us'?(u.routePolicy||'shortest'):'shortest',entry=u.side==='us'?(u.supplyEntry||'auto'):'auto';
+const enemies=alive(s).filter(v=>v.side!==u.side),observed=policy==='cautious'?enemies.filter(v=>!s.fog||s.finished||spotted(s,v,u.side)):[];
+let seen=new Set(),q=new RouteQueue({x:u.x,y:u.y,path:[],cost:0},(a,b)=>a.cost-b.cost);
+while(q.length){let p=q.shift(),k=p.x+','+p.y;if(seen.has(k))continue;seen.add(k);
+const sector=entry==='auto'||entry==='north'&&p.y<board(s).height/3||entry==='center'&&p.y>=board(s).height/3&&p.y<board(s).height*2/3||entry==='south'&&p.y>=board(s).height*2/3;
+if((u.side==='us'?p.x===board(s).width-1&&sector:p.x===0))return [{x:u.x,y:u.y},...p.path];
+for(let n of neighbors(p,s)){
+if(!passage(s,p,n,{type:'supply'}))continue;
+if(seen.has(n.x+','+n.y)||enemies.some(v=>v.x===n.x&&v.y===n.y)||supplyInterdicted(s,n,u.side))continue;
+let terrain=cell(n.x,n.y,s),step=policy==='roads'?(['road','beach'].includes(terrain)?1:terrain==='marsh'?4:3):1;
+if(policy==='cautious'&&observed.some(v=>dist(v,n)<=1))step+=6;
+q.push({...n,cost:p.cost+step,path:[...p.path,n]});
+}}return null}
+
+function supplyRoute(s,u){return commandServices&&s.forwardSupplyEnabled&&u.side==='us'&&u.type!=='hq'?commandServices.supplyRoute(s,u):edgeSupplyRoute(s,u)}
+function supply(s,u){return !!supplyRoute(s,u)}
+function migrate(s){if(s.commandMode===undefined)s.commandMode=false;if(s.commandLevel===undefined)s.commandLevel='Regiment';if(s.supportPolicy===undefined)s.supportPolicy='organic';if(s.commandReports===undefined)s.commandReports=[];if(s.scenarioSpec&&scenarioSpecValid(s.scenarioSpec))registerScenario(s.scenarioSpec);if(s.operationalRules===undefined)s.operationalRules=false;if(s.utahEvents===undefined)s.utahEvents=true;if(s.damagedBridges===undefined)s.damagedBridges=[];if(s.operations===undefined)s.operations={startedTurn:null,germanDue:null,arrived:[]};if(s.commandOverlay===undefined)s.commandOverlay=false;if(s.advancedRules===undefined)s.advancedRules=false;if(s.smoke===undefined)s.smoke=[];if(s.supportAssets===undefined)s.supportAssets=supportCatalog.map(a=>({id:a.id,assignedTo:null}));if(s.supplyReports===undefined)s.supplyReports=[];if(s.allocationMode===undefined)s.allocationMode='automatic';if(s.scenarioId===undefined)s.scenarioId='utah';if(s.autoReport===undefined)s.autoReport=true;if(s.reports===undefined)s.reports=[];if(s.fog===undefined)s.fog=true;if(!['clear','rain','fog','night'].includes(s.weather))s.weather='clear';if(s.intel===undefined)s.intel=[];if(s.intelObjectives===undefined)s.intelObjectives=[null,null,null];for(let u of s.units){if(u.cohesion===undefined)u.cohesion=100;if(u.organicEngineers===undefined)u.organicEngineers=false;u.operational=operational(s);if(u.commandId===undefined)u.commandId=u.side==='us'&&u.type!=='hq'?'hq-regiment':null;if(u.suppression===undefined)u.suppression=0;if(u.ammo===undefined)u.ammo=6;if(u.preparedTarget===undefined)u.preparedTarget=null;if(u.preparedTurn===undefined)u.preparedTurn=0;if(u.attackStyle===undefined)u.attackStyle='hasty';if(u.mission===undefined)u.mission='destructive';u.rulesAdvanced=s.advancedRules;if(u.attachedTo===undefined)u.attachedTo=null;if(u.nation===undefined)u.nation=u.side==='de'?'de':scenario(s).faction;if(u.stock===undefined)u.stock=2;if(u.priority===undefined)u.priority='normal';if(u.supplyRequest===undefined)u.supplyRequest=1;if(u.routePolicy===undefined)u.routePolicy='shortest';if(u.supplyEntry===undefined)u.supplyEntry='auto'}if(s.hqVersion===undefined||s.hqVersion===1){s.hqVersion=2;deployHeadquarters(s);for(const u of s.units)if(u.side==='us'&&u.type!=='hq'&&u.commandId==='hq-division')u.commandId='hq-regiment';return migrate(s)}correctHeadquartersPlacement(s);if(commandServices)commandServices.migrate(s);return s}
+function sightRange(s,u){const base=u.type==='hq'?1:u.type==='artillery'?2:3;const recon=u.stock>0&&activeAttachments(s,u).some(a=>a.kind==='recon')?1:0;const cap={clear:6,rain:2,fog:1,night:1}[s.weather||'clear'];return Math.min(base+recon,cap)}
+function spotted(s,p,side='us'){return alive(s).some(u=>u.side===side&&dist(u,p)<=sightRange(s,u)&&lineOfSight(s,u,p))}
+function tacticalContact(s,u){return alive(s).some(v=>v.side!==u.side&&dist(u,v)<=1)}
+function withdrawalOrder(s,u){if(!u||u.type==='hq'||u.type==='artillery')return null;const threats=alive(s).filter(v=>v.side!==u.side&&dist(v,u)<=2);if(!threats.length)return null;const seen=threats.some(v=>spotted(s,v,u.side));if((s.weather||'clear')==='clear'&&seen&&u.disengagePolicy!=='withdraw'&&u.hp>2&&u.cohesion>15)return null;const known={...s,units:s.units.filter(v=>v.side===u.side||spotted(s,v,u.side))};const spots=[...reachable(known,u,budget(u)).keys()].map(k=>{const [x,y]=k.split(',').map(Number);return {x,y}}).filter(v=>dist(v,u)>0&&!alive(s).some(t=>t.id!==u.id&&t.x===v.x&&t.y===v.y));spots.sort((a,b)=>Math.min(...threats.map(t=>dist(b,t)))-Math.min(...threats.map(t=>dist(a,t)))||a.x-b.x);const best=spots[0];return best&&Math.min(...threats.map(t=>dist(best,t)))>Math.min(...threats.map(t=>dist(u,t)))?{type:'move',x:best.x,y:best.y}:null}
+
+function contacts(s){return alive(s).filter(u=>u.side==='de'&&spotted(s,u))}
+function updateIntel(s){migrate(s);let seen=contacts(s);s.intel=s.intel.filter(r=>!spotted(s,r)&&!seen.some(u=>u.id===r.id));for(let u of seen)s.intel.push({id:u.id,name:u.name,type:u.type,x:u.x,y:u.y,seenTurn:s.turn});scenario(s).objectives.forEach((o,i)=>{if(spotted(s,o))s.intelObjectives[i]=s.owners[i]});return s}
+function visibleLog(s){if(!s.fog||s.finished)return s.log;let unseen=s.units.filter(u=>u.side==='de'&&!spotted(s,u));return s.log.filter(t=>!(t.includes('advances')&&unseen.some(u=>t.includes(u.name)))).map(t=>{for(let u of unseen)t=t.split(u.name).join('Unidentified German formation');return t})}
+function consumption(u,s){if(u.type==='hq')return 0;if(u.type==='tank'&&(u.reacted||u.reserveCommitted||u.order?.type==='reserve'))return 2;if(['repair','demolish'].includes(u.order?.type))return 2;if(s&&u.type==='artillery'&&!u.order&&u.attachedTo&&s.units.some(h=>h.id===u.attachedTo&&h.hp>0&&h.order?.type==='attack'))return 2;return (u.type==='tank'&&u.order?.type==='move')||(u.type==='artillery'&&['attack','smoke','defensive'].includes(u.order?.type))?2:1}
+function regimentalSupply(s){const h=s.units.find(u=>u.id==='hq-regiment');return s.advancedRules&&h&&commandStatus(s,h).ok?2:0}
+function supplyCapacity(s){return scenario(s).supply+regimentalSupply(s)}
+function logistics(s){
+if(commandServices&&s.forwardSupplyEnabled)return commandServices.logistics(s);
+let pool=scenario(s).supply,extra=regimentalSupply(s),capacity=pool+extra,rank={high:0,normal:1,low:2};
+let rows=alive(s).filter(u=>u.side==='us'&&u.type!=='hq').map(u=>({id:u.id,route:supplyRoute(s,u),stock:u.stock??2,priority:u.priority??'normal',request:s.allocationMode==='manual'?(u.supplyRequest??1):3-(u.stock??2),delivery:0}));
+rows.sort((a,b)=>rank[a.priority]-rank[b.priority]||a.stock-b.stock||a.id.localeCompare(b.id));
+for(let r of rows){let initial=r.stock;if(r.route){const local=commandStatus(s,s.units.find(u=>u.id===r.id),'Regiment').ok;r.delivery=Math.max(0,Math.min(r.request,3-r.stock,pool+(local?extra:0)));const baseUse=Math.min(pool,r.delivery);pool-=baseUse;extra-=r.delivery-baseUse;r.stock+=r.delivery}
+let u=s.units.find(v=>v.id===r.id);r.use=consumption(u,s);r.after=Math.max(0,r.stock-r.use);r.shortfall=Math.max(0,r.request-r.delivery);
+r.reason=!r.route?'Route cut':r.request===0?'No delivery requested':r.request>3-initial?'Reserve capacity':r.shortfall?'Delivery pool exhausted':'Request covered';
+}return {capacity,unused:pool+extra,rows}}
+
+function defenseCover(s,u){return (['hedgerow','marsh','town'].includes(cell(u.x,u.y,s))?1:0)+(u.order?.type==='defend'?1:0)}
+// Prototype establishment ledger. These are explicitly illustrative force-planning
+// values, NOT researched historical orders of battle or individual casualties.
+function establishment(u){
+ const n=(u.name||'').toLowerCase(),hq=u.type==='hq',tank=u.type==='tank',art=u.type==='artillery';
+ const echelon=/\b(det\.?|detachment)\b/.test(n)?'detachment':/\b(section|position)\b/.test(n)?'section':/\b(battery)\b/.test(n)?'battery':/\b(company|co\.?|reserve company)\b/.test(n)?'company':/\b(bn|battalion)\b/.test(n)||/^\d+\/\d+/.test(n)?'battalion':hq?'headquarters':art?'battery':tank?'detachment':'company';
+ const personnel=hq?80:tank?(echelon==='detachment'?80:echelon==='company'?160:650):art?(echelon==='section'?35:180):echelon==='battalion'?750:echelon==='section'?90:180;
+ return {echelon,personnel,tanks:tank?(echelon==='detachment'?8:echelon==='company'?17:50):0,guns:art?(echelon==='section'?2:6):0,automaticWeapons:hq?4:tank?8:art?6:Math.round(personnel/15),basis:'Illustrative scenario planning establishment; not a verified historical TO&E'};
+}
+function personnelState(u){
+ const toe=establishment(u),hp=Math.max(0,Math.min(10,u.hp||0)),fraction=hp/10;
+ const men=Math.round(toe.personnel*fraction),tanks=Math.round(toe.tanks*fraction),guns=Math.round(toe.guns*fraction);
+ return {...toe,present:men,shortfall:toe.personnel-men,serviceableTanks:tanks,serviceableGuns:guns,quality:Math.max(.5,Math.min(1,u.replacementQuality??1)),readiness:Math.round(fraction*100)};
+}
+function fireFactor(u){if(u.type==='hq')return 0;return (u.replacementQuality??1)*(u.reconCommitted?.9:1)*(u.stock===undefined?(u.supplied?1:.65):u.stock===0?.55:u.stock===1?.8:1)*(u.rulesAdvanced?Math.max(.4,1-.2*u.suppression):1)*(u.operational?(.7+.3*u.cohesion/100)*(1-.08*Math.min(4,u.fatigue||0)):1)}
+function random(s){s.seed=(Math.imul(1664525,s.seed)+1013904223)>>>0;return s.seed/4294967296}
+function shotsAir(s,target,damage){target.hp=Math.max(0,target.hp-damage);target.fatigue=Math.min(4,target.fatigue+1)}
+function planOpponent(s){
+const cfg=scenario(s),friends=alive(s).filter(u=>u.side==='de'),seen=alive(s).filter(u=>u.side==='us'&&(!s.fog||spotted(s,u,'de')));
+const owners=cfg.objectives.map((o,i)=>!s.fog||spotted(s,o,'de')?s.owners[i]:null);
+const known={...s,units:[...friends.map(u=>({...u,order:null})),...seen.map(u=>({...u,order:null}))]},assigned=new Map(),reserved=new Set();
+const cover=p=>['hedgerow','marsh','town'].includes(cell(p.x,p.y,s))?1:0;
+const threat=p=>seen.reduce((n,e)=>n+(dist(e,p)<=range(e)?(e.type==='tank'?4:3)*e.hp/10*fireFactor(e):0),0);
+// Guns select targets first; later formations avoid wasting fire on likely kills.
+for(const u of friends.slice().sort((a,b)=>(b.type==='artillery')-(a.type==='artillery')||a.id.localeCompare(b.id))){
+u.order=null;
+if(cfg.sandbox&&s.sandbox?.enemyMode!=='active'){const target=seen.filter(t=>dist(u,t)<=range(u)).sort((a,b)=>dist(u,a)-dist(u,b))[0];u.order=target?{type:'attack',target:target.id,mission:'destructive'}:{type:'defend'};continue}
+if(['fog','night','rain'].includes(s.weather)&&u.hp<=5&&!cfg.objectives.some(o=>dist(o,u)===0)){const retreat=withdrawalOrder(s,u);if(retreat){u.order=retreat;continue}}
+if(s.advancedRules&&u.type==='artillery'&&u.ammo<2&&u.stock>=2&&supply(s,u))continue;
+const observed=known.units.find(v=>v.id===u.id),onFlag=cfg.objectives.some(o=>dist(o,u)===0),danger=threat(u),weak=u.hp<=3;
+const moves=()=>[...reachable(known,observed,budget(u)).keys()].map(k=>{let [x,y]=k.split(',').map(Number);return {x,y}}).filter(p=>!reserved.has(p.x+','+p.y));
+function moveTo(p){if(p&&dist(p,u)>0){u.order={type:'move',x:p.x,y:p.y};reserved.add(p.x+','+p.y);observed.x=p.x;observed.y=p.y;return true}return false}
+// Withdraw battered formations toward safety and the western supply edge.
+if(weak&&danger>0&&!onFlag){let options=moves().map(p=>({p,score:threat(p)*4+p.x*.25-cover(p)})).sort((a,b)=>a.score-b.score||a.p.x-b.p.x);if(options[0]&&options[0].score<danger*4+u.x*.25-cover(u)&&moveTo(options[0].p))continue;}
+let targets=seen.filter(t=>dist(u,t)<=range(u)&&(!operational(s)||u.type!=='artillery'||spotted(s,t,u.side))).map(t=>{let damage=Math.max(1,(u.type==='tank'?4:3)*u.hp/10*fireFactor(u)-cover(t)+1),remaining=t.hp-(assigned.get(t.id)||0),flag=cfg.objectives.some(o=>dist(o,t)===0);return {t,damage,score:(remaining>0?8:0)+(remaining>0&&damage>=remaining?5:0)+(flag?4:0)+(t.type==='artillery'?2:0)+damage-(u.type!=='artillery'?2*t.hp/10*fireFactor(t):0)}}).sort((a,b)=>b.score-a.score||a.t.id.localeCompare(b.t.id));
+if(targets.length&&!(weak&&u.stock>=2&&danger<2)){
+ const choice=targets[0],estimate=combatEstimate(known,{...u,order:null,attackStyle:'hasty'},choice.t);
+ const mutual=friends.filter(v=>v.id!==u.id&&v.type!=='artillery'&&dist(v,choice.t)<=1&&v.hp>3).length;
+ if(estimate.available&&(u.type==='artillery'||Number(estimate.ratio)>=.85||choice.t.hp<=3||mutual>0)){
+  if(s.advancedRules&&u.type!=='artillery'&&prepared(s,u,choice.t.id))u.order={type:'attack',target:choice.t.id,style:'deliberate'};
+  else if(s.advancedRules&&u.type!=='artillery'&&cover(choice.t)&&u.hp>=6&&u.suppression<2&&Number(estimate.ratio)<1.5)u.order={type:'prepare',target:choice.t.id};
+  else u.order={type:'attack',target:choice.t.id,mission:u.type==='artillery'&&friends.some(v=>v.type!=='artillery'&&dist(v,choice.t)<=1)?'suppression':'destructive'};
+  assigned.set(choice.t.id,(assigned.get(choice.t.id)||0)+choice.damage);continue;
+ }
+}
+// Rest safely to rebuild strength and remove fatigue.
+if((u.hp<7||u.fatigue>=3)&&danger<2&&u.stock>=2)continue;
+// Healthy defenders hold captured flags unless immediate combat is needed.
+if(onFlag&&owners[cfg.objectives.findIndex(o=>dist(o,u)===0)]==='de')continue;
+let goals=cfg.objectives.map((o,i)=>({o,i})).filter(({o,i})=>owners[i]!=='de'||seen.some(t=>dist(t,o)<=2));if(!goals.length)goals=cfg.objectives.map((o,i)=>({o,i}));
+let candidates=moves().map(p=>{let goal=Math.min(...goals.map(({o,i})=>dist(p,o)+(owners[i]==='de'?2:0))),score=-goal*2+cover(p)*.7-threat(p)*(weak?3:.55);if(cfg.objectives.some((o,i)=>dist(o,p)===0&&owners[i]!=='de'))score+=10;
+if(u.type==='artillery'){let near=seen.length?Math.min(...seen.map(t=>dist(p,t))):5;score+=(near>=2&&near<=4?6:0)-(near<=1?8:0);}
+if(u.stock===0&&!supply(known,{...u,...p}))score-=5;
+return {p,score};}).sort((a,b)=>b.score-a.score||a.p.y-b.p.y||a.p.x-b.p.x);
+let here=candidates.find(c=>dist(c.p,u)===0);if(candidates[0]&&(!here||candidates[0].score>here.score+.1))moveTo(candidates[0].p);
+}
+return s;
+}
+function operational(s){return !!(s.advancedRules&&s.operationalRules)}
+function riverLayout(s){const c=scenario(s);return {x:c.riverX??(c.theme==='juno'?4:c.theme==='inland'?2:3),rows:c.bridgeRows||[4,7]}}
+function bridgeList(s){const r=riverLayout(s);return r.x<0?[]:r.rows.map(y=>({id:'bridge-'+y,x:r.x,y,name:'Crossing '+(y+1),intact:!(s.damagedBridges||[]).includes('bridge-'+y)}))}
+function riverCrossing(s,a,b){const r=riverLayout(s);if(r.x<0||!((a.x<=r.x&&b.x>r.x)||(b.x<=r.x&&a.x>r.x)))return null;const bridge=a.y===b.y?bridgeList(s).find(p=>p.y===a.y):null;return {bridge}}
+function engineerCapable(s,u){return !!u.organicEngineers||activeAttachments(s,u).some(a=>a.kind==='engineers')}
+function passage(s,a,b,u){if(!operational(s))return true;const river=riverCrossing(s,a,b);if(!river)return true;if(river.bridge)return river.bridge.intact;return u.type==='infantry'||(['tank'].includes(u.type)&&engineerCapable(s,u))}
+function enemyZone(s,p,side){return operational(s)&&alive(s).some(e=>e.side!==side&&['infantry','tank'].includes(e.type)&&e.suppression<2&&dist(e,p)<=1)}
+function stepAllowed(s,u,a,b){return passage(s,a,b,u)&&!(enemyZone(s,a,u.side)&&enemyZone(s,b,u.side))}
+function moveCost(s,u,a,b){if(u.type==='hq'&&(a.x>=board(s).width||b.x>=board(s).width))return 1;const t=cell(b.x,b.y,s);if(!operational(s))return ['marsh','hedgerow'].includes(t)?2:1;const r=riverCrossing(s,a,b);if(r&&!r.bridge)return engineerCapable(s,u)?2:3;let cost=['marsh','hedgerow'].includes(t)?2:1;const roads=['road','town'];if(roads.includes(t)&&roads.includes(cell(a.x,a.y,s)))cost=.5;if(t==='beach'&&alive(s).filter(v=>cell(v.x,v.y,s)==='beach').length>=5)cost=Math.max(2,cost);return cost}
+function lineOfSight(s,a,b){if(!operational(s)||dist(a,b)<=1)return true;const cube=p=>{let x=p.x-(p.y-(p.y&1))/2,z=p.y;return {x,y:-x-z,z}},A=cube(a),B=cube(b),n=dist(a,b);for(let i=1;i<n;i++){const t=i/n,x=A.x+(B.x-A.x)*t+1e-6,y=A.y+(B.y-A.y)*t+1e-6,z=A.z+(B.z-A.z)*t-2e-6;let rx=Math.round(x),ry=Math.round(y),rz=Math.round(z);const dx=Math.abs(rx-x),dy=Math.abs(ry-y),dz=Math.abs(rz-z);if(dx>dy&&dx>dz)rx=-ry-rz;else if(dy>dz)ry=-rx-rz;else rz=-rx-ry;const p={x:rx+(rz-(rz&1))/2,y:rz};if(['hedgerow','town'].includes(cell(p.x,p.y,s)))return false}return true}
+function operationalValid(s){return typeof s.operationalRules==='boolean'&&typeof s.utahEvents==='boolean'&&Array.isArray(s.damagedBridges)&&s.damagedBridges.length<=3&&s.damagedBridges.every(id=>bridgeList(s).some(b=>b.id===id))&&s.operations&&((s.operations.startedTurn===null)||(Number.isInteger(s.operations.startedTurn)&&s.operations.startedTurn>=1&&s.operations.startedTurn<=s.turn))&&(s.operations.germanDue===null||Number.isInteger(s.operations.germanDue)&&s.operations.germanDue>=1&&s.operations.germanDue<=Math.max(30,scenario(s).turns+5))&&Array.isArray(s.operations.arrived)&&s.operations.arrived.length<=10&&s.operations.arrived.every(id=>['op-air-n','op-air-s','op-wave-infantry','op-wave-engineers','op-wave-tank','op-wave-guns','op-de-infantry','op-de-tank'].includes(id))&&s.units.every(u=>Number.isInteger(u.cohesion)&&u.cohesion>=0&&u.cohesion<=100&&typeof u.organicEngineers==='boolean')}
+function toggleOperational(s,on){migrate(s);s.operationalRules=!!on;if(on){s.advancedRules=true;if(s.operations.startedTurn===null){s.operations.startedTurn=s.turn;s.operations.germanDue=s.turn+3+Math.floor(random(s)*3)}}else for(const u of s.units)if(['reserve','repair','demolish'].includes(u.order?.type))u.order=null;migrate(s);return s}
+function operationalEngineering(s,events){for(const u of alive(s).filter(u=>['repair','demolish'].includes(u.order?.type))){const b=bridgeList(s).find(b=>b.id===u.order.target);if(!b||dist(u,b)>1||!engineerCapable(s,u)||u.stock<2||!supply(s,u)){events.push('ENGINEERS — '+u.name+': work not executed; requires engineers, adjacent crossing, two reserves, and an open route.');continue}if(u.order.type==='repair')s.damagedBridges=s.damagedBridges.filter(id=>id!==b.id);else if(!s.damagedBridges.includes(b.id))s.damagedBridges.push(b.id);events.push('ENGINEERS — '+u.name+' '+(u.order.type==='repair'?'repairs':'demolishes')+' '+b.name+'.')}}
+function operationalReactions(s,events){for(const u of alive(s).filter(u=>u.order?.type==='reserve')){const protect=alive(s).find(t=>t.id===u.order.target&&t.side===u.side),stance=u.order.stance;if(!protect||dist(u,protect)>3||u.suppression>=2||u.cohesion<40||!commandStatus(s,u).ok){events.push('RESERVE — '+u.name+': cannot react (range, readiness, or command).');continue}const enemies=alive(s).filter(e=>e.side!==u.side&&dist(e,protect)<=1&&spotted(s,e,u.side));if(!enemies.length){events.push('RESERVE — '+u.name+' holds; no observed threat.');continue}const known={...s,units:s.units.filter(v=>v.side===u.side||spotted(s,v,u.side))};const targets=stance==='counterattack'?enemies:[];let enemy=targets.find(e=>dist(u,e)<=1);if(!enemy){const goals=stance==='counterattack'?enemies.flatMap(e=>neighbors(e,s)):neighbors(protect,s);const paths=goals.filter(p=>!alive(s).some(v=>v.id!==u.id&&v.x===p.x&&v.y===p.y)).map(p=>path(known,u,p)).filter(Boolean).sort((a,b)=>a.cost-b.cost);if(paths[0]){let spent=0;for(const n of paths[0].path){const cost=moveCost(s,u,u,n);if(spent+cost>Math.min(2,budget(u))||!stepAllowed(s,u,u,n)||alive(s).some(v=>v.id!==u.id&&v.x===n.x&&v.y===n.y))break;spent+=cost;u.x=n.x;u.y=n.y;u.reacted=true;if(enemyZone(s,u,u.side))break}events.push('RESERVE — '+u.name+' reacts toward '+protect.name+' at '+(u.x+1)+', '+(u.y+1)+'.')}enemy=targets.find(e=>dist(u,e)<=1&&spotted(s,e,u.side))}if(enemy){u.order={type:'attack',target:enemy.id,style:'hasty'};events.push('COUNTERATTACK — '+u.name+' engages '+enemy.name+'.')}}}
+function operationalArrivals(s,events){if(!s.utahEvents||scenario(s).id!=='utah')return;const op=s.operations;if(op.startedTurn===null){op.startedTurn=s.turn;op.germanDue=s.turn+3+Math.floor(random(s)*3)}const t=s.turn-op.startedTurn,arrivals=[
+{id:'op-air-n',name:'Airborne northern detachment',side:'us',type:'infantry',x:2,y:1,due:0,air:true},
+{id:'op-air-s',name:'Airborne southern detachment',side:'us',type:'infantry',x:4,y:7,due:0,air:true},
+{id:'op-wave-infantry',name:'Second-wave infantry',side:'us',type:'infantry',y:1,due:1},
+{id:'op-wave-engineers',name:'Beach engineer detachment',side:'us',type:'infantry',y:4,due:1,engineers:true},
+{id:'op-wave-tank',name:'Follow-on tank company',side:'us',type:'tank',y:7,due:3},
+{id:'op-wave-guns',name:'Follow-on field battery',side:'us',type:'artillery',y:4,due:3},
+{id:'op-de-infantry',name:'German inland reinforcement',side:'de',type:'infantry',y:2,due:op.germanDue-op.startedTurn},
+{id:'op-de-tank',name:'German mobile reinforcement',side:'de',type:'tank',y:6,due:op.germanDue-op.startedTurn}
+];const landed=new Set();for(const a of arrivals){if(op.arrived.includes(a.id)||t<a.due)continue;let p;if(a.air){const choices=[];for(let y=0;y<9;y++)for(let x=0;x<8;x++)if(dist(a,{x,y})<=1&&!alive(s).some(u=>u.x===x&&u.y===y))choices.push({x,y});p=choices[Math.floor(random(s)*choices.length)]}else if(a.side==='us'){const sector=Math.floor(a.y/3),choices=[sector,...[0,1,2].filter(k=>k!==sector).sort((v,w)=>Math.abs(v-sector)-Math.abs(w-sector))];let selected=null;for(const k of choices){if(landed.has(k))continue;const present=alive(s).filter(u=>u.x===8&&Math.floor(u.y/3)===k);if(present.length>=2||present.some(u=>u.side!=='us'))continue;const rows=[k*3,k*3+1,k*3+2].sort((v,w)=>Math.abs(v-a.y)-Math.abs(w-a.y));const free=rows.find(y=>!alive(s).some(u=>u.x===8&&u.y===y));if(free!==undefined){selected={k,y:free};break}}if(!selected){events.push('LANDING DELAY — '+a.name+' waits offshore; all beach sectors congested or contested. Automatic landing retry next turn.');continue}p={x:8,y:selected.y};landed.add(selected.k);if(selected.k!==sector)events.push('LANDING DIVERSION — '+a.name+' redirected to '+['northern','central','southern'][selected.k]+' beach because its planned landing sector was blocked.')}else p=[a.y,a.y-1,a.y+1].filter(y=>y>=0&&y<9).map(y=>({x:0,y})).find(p=>!alive(s).some(u=>dist(p,u)===0));if(!p)continue;const u=unit(a.id,a.name,a.side,p.x,p.y,a.type);u.organicEngineers=!!a.engineers;u.nation=a.side==='de'?'de':scenario(s).faction;s.units.push(u);op.arrived.push(a.id);migrate(s);if(a.side==='us'||!s.fog||spotted(s,u))events.push((a.air?'AIRBORNE — ':'REINFORCEMENT — ')+a.name+' arrives at '+(p.x+1)+', '+(p.y+1)+'.')} }
+function battlefieldFactor(s,u,t){
+ const stock=Number.isFinite(u.stock)?u.stock:2;
+ const supplyFactor=u.supplied===false?(stock===0?.65:.82):stock===0?.82:1;
+ const cohesionFactor=Math.max(.55,Math.min(1,((u.cohesion??100)/100)*.5+.5));
+ const fatigueFactor=Math.max(.7,1-(u.fatigue||0)*.075);
+ const suppressionFactor=Math.max(.55,1-(u.suppression||0)*.15);
+ const commandFactor=u.commandId&&alive(s).some(h=>h.id===u.commandId&&h.hp>0)?1:.9;
+ const coordination=u.order?.coordination==='main'?1.1:1;
+ return Math.max(.25,Math.min(1.2,supplyFactor*cohesionFactor*fatigueFactor*suppressionFactor*commandFactor*coordination));
+}
+function combatEstimate(s,u,t){if(!u||!t||u.side===t.side||range(u)<dist(u,t))return {available:false,reason:'Outside attack range'};if((s.fog||operational(s)&&u.type==='artillery')&&!spotted(s,t,u.side))return {available:false,reason:'No friendly observer'};const cover=defenseCover(s,t),bonus=supportBonus(s,u,t,cover),style=u.order?.style||u.attackStyle,mission=u.order?.mission||u.mission||'destructive';if(s.advancedRules&&u.type!=='artillery'&&style==='deliberate'&&!prepared(s,u,t.id))return {available:false,reason:'Prepare this target first; assault next turn'};if(s.advancedRules&&u.type==='artillery'&&(u.ammo<(mission==='destructive'?2:1)||u.stock<1))return {available:false,reason:'Insufficient ammunition or reserves'};const power=(u.type==='tank'?4:3)*u.hp/10*fireFactor(u)*battlefieldFactor(s,u,t),prep=s.advancedRules&&style==='deliberate'&&u.type!=='artillery'?2:0,smoke=s.advancedRules&&s.units.some(v=>v.order?.type==='smoke'&&v.order.x===t.x&&v.order.y===t.y)?2:0;let low,high;if(s.advancedRules&&u.type==='artillery'&&mission==='suppression')low=high=Math.max(0,Math.round(power*.35-cover-smoke));else{const floor=s.advancedRules?0:1;low=s.advancedRules?Math.max(0,Math.round(power-cover)+bonus+prep-smoke):Math.max(1,Math.round(power-cover))+bonus;high=s.advancedRules?Math.max(0,Math.round(power-cover+2)+bonus+prep-smoke):Math.max(1,Math.round(power-cover+2))+bonus}return {available:true,low,high,returnFire:u.type==='artillery'||t.type==='hq'?0:Math.max(s.advancedRules?0:1,Math.round(2*t.hp/10*fireFactor(t)*battlefieldFactor(s,t,u))),ratio:((power+bonus+prep)/Math.max(1,2*t.hp/10*fireFactor(t)*battlefieldFactor(s,t,u)+cover)).toFixed(1),cover,bonus,prep,smoke,readiness:Math.round(fireFactor(u)*100)}}
+function advancedOrderValid(s,u){const o=u.order;if(!o)return true;if(u.type==='hq')return o.type==='move';if(o.type==='reserve')return operational(s)&&['infantry','tank'].includes(u.type)&&['reinforce','counterattack'].includes(o.stance)&&typeof o.target==='string';if(['repair','demolish'].includes(o.type))return operational(s)&&typeof o.target==='string';if(o.style!==undefined&&!['hasty','deliberate'].includes(o.style))return false;if(o.mission!==undefined&&!['destructive','suppression'].includes(o.mission))return false;if(o.type==='prepare')return s.advancedRules&&u.type!=='artillery';if(['smoke','defensive'].includes(o.type))return s.advancedRules&&u.type==='artillery';return o.type==='move'||o.type==='attack'||o.type==='defend'}
+function advancedValid(s){return typeof s.advancedRules==='boolean'&&Array.isArray(s.smoke)&&s.smoke.length<=30&&s.smoke.every(p=>Number.isInteger(p.x)&&p.x>=0&&p.x<board(s).width&&Number.isInteger(p.y)&&p.y>=0&&p.y<board(s).height)&&s.units.every(u=>advancedOrderValid(s,u)&&Number.isInteger(u.suppression)&&u.suppression>=0&&u.suppression<=3&&Number.isInteger(u.ammo)&&u.ammo>=0&&u.ammo<=6&&['hasty','deliberate'].includes(u.attackStyle)&&['destructive','suppression','smoke','defensive'].includes(u.mission)&&(u.preparedTarget===null||typeof u.preparedTarget==='string')&&Number.isInteger(u.preparedTurn)&&u.preparedTurn>=0&&u.preparedTurn<=s.turn)}
+function toggleAdvanced(s,on){migrate(s);s.advancedRules=!!on;s.smoke=[];for(const u of s.units){u.rulesAdvanced=!!on;u.suppression=0;u.preparedTarget=null;u.preparedTurn=0;if(u.order&&(['prepare','smoke','defensive','reserve','repair','demolish'].includes(u.order.type)||u.order.style==='deliberate'))u.order=null}return s}
+function smokeCover(s,u){return s.smoke.some(p=>p.x===u.x&&p.y===u.y)?2:0}
+function prepared(s,u,target){return u.preparedTarget===target&&u.preparedTurn===s.turn-1}
+function advancedFire(s,events){
+const hit=new Set(),guns=alive(s).filter(u=>u.type==='artillery');
+const observed=(u,t)=>!s.fog||spotted(s,t,u.side);
+const suppress=(t,n)=>{if(operational(s))t.cohesion=Math.max(0,t.cohesion-n*10);t.suppression=Math.min(3,t.suppression+n);hit.add(t.id)};
+const cover=t=>defenseCover(s,t);
+function validTarget(u){const t=alive(s).find(t=>t.id===u.order.target&&t.side!==u.side);if(!t||dist(u,t)>range(u)||(!observed(u,t)||operational(s)&&u.type==='artillery'&&!spotted(s,t,u.side))){events.push(u.name+': fire not executed — target destroyed, out of range, or no longer spotted.');return null}return t}
+function readyGun(u,cost){if(u.ammo<cost||u.stock<1){events.push('ARTILLERY — '+u.name+': fire not executed — '+(u.ammo<cost?'insufficient ammunition':'no supply reserves')+'.');return false}return true}
+// Smoke precedes both bombardment and assaults; it affects this resolution only.
+for(const u of guns.filter(u=>u.order?.type==='smoke')){const p=u.order;if(['off','sea','rear'].includes(cell(p.x,p.y,s))||dist(u,p)>4){events.push('SMOKE — '+u.name+': mission not executed — invalid or distant hex.');continue}if(!readyGun(u,1))continue;u.ammo--;if(!s.smoke.some(q=>q.x===p.x&&q.y===p.y))s.smoke.push({x:p.x,y:p.y});events.push('SMOKE — '+u.name+' screens hex '+(p.x+1)+', '+(p.y+1)+'; incoming losses reduced by 2 this resolution.');}
+// Both sides' batteries fire before ground attacks. Bombardment within this phase is simultaneous.
+let barrages=[];for(const u of guns.filter(u=>u.order?.type==='attack')){const t=validTarget(u);if(!t)continue;const mission=u.order.mission||'destructive',cost=mission==='suppression'?1:2;if(!readyGun(u,cost))continue;u.ammo-=cost;const bonus=supportBonus(s,u,t,cover(t)),power=3*u.hp/10*fireFactor(u)*battlefieldFactor(s,u,t);let damage=mission==='suppression'?Math.max(0,Math.round(power*.35-cover(t)-smokeCover(s,t))):Math.max(0,Math.round(power-cover(t)+random(s)*2)+bonus-smokeCover(s,t));barrages.push({u,t,damage,supp:mission==='suppression'?2:1,mission,bonus})}
+for(const {u,t,damage,supp,mission,bonus} of barrages){t.hp=Math.max(0,t.hp-damage);suppress(t,supp);events.push('ARTILLERY '+mission.toUpperCase()+' — '+u.name+' → '+t.name+': '+damage+' losses; readiness '+Math.round(fireFactor(u)*100)+'%; cover -'+cover(t)+'; smoke -'+smokeCover(s,t)+'; suppression '+t.suppression+'/3'+(bonus?' (+'+bonus+' attachment)':'')+'.');}
+// A defensive mission engages one observed attacker within the battery's range.
+for(const u of guns.filter(u=>u.hp>0&&u.order?.type==='defensive')){const friend=alive(s).find(t=>t.id===u.order.target&&t.side===u.side);const attacker=friend&&dist(u,friend)<=4?alive(s).find(t=>t.side!==u.side&&t.order?.type==='attack'&&t.order.target===friend.id&&dist(u,t)<=4&&observed(u,t)):null;if(!attacker){events.push('DEFENSIVE FIRE — '+u.name+': no eligible attacker; ammunition retained.');continue}if(!readyGun(u,1))continue;u.ammo--;const damage=Math.max(0,Math.round(fireFactor(u)*u.hp/10*battlefieldFactor(s,u,attacker))-smokeCover(s,attacker));attacker.hp=Math.max(0,attacker.hp-damage);suppress(attacker,2);events.push('DEFENSIVE FIRE — '+u.name+' → '+attacker.name+': '+damage+' losses; suppression '+attacker.suppression+'/3 protecting '+friend.name+'.');}
+let shots=[];for(const u of alive(s).filter(u=>u.type!=='artillery'&&u.type!=='hq')){
+if(u.order?.type==='prepare'){const t=alive(s).find(t=>t.id===u.order.target&&t.side!==u.side);if(t&&dist(u,t)<=1&&observed(u,t)&&(!operational(s)||u.cohesion>=40)){u.preparedTarget=t.id;u.preparedTurn=s.turn;events.push('PREPARATION — '+u.name+' prepares against '+t.name+'. Select Deliberate attack on this target next turn for +2 losses.')}else{u.preparedTarget=null;events.push('PREPARATION — '+u.name+': target unavailable; preparation cancelled.')}continue}
+if(u.order?.type!=='attack')continue;const t=validTarget(u);if(!t)continue;
+const deliberate=u.order.style==='deliberate';if(deliberate&&!prepared(s,u,t.id)){events.push(u.name+': fire not executed — deliberate attack requires preparation on the preceding turn.');continue}
+const bonus=supportBonus(s,u,t,cover(t)),preparation=deliberate?2:0;
+const damage=Math.max(0,Math.round((u.type==='tank'?4:3)*u.hp/10*fireFactor(u)*battlefieldFactor(s,u,t)-cover(t)+random(s)*2)+bonus+preparation-smokeCover(s,t));
+shots.push({u,t,damage,text:(deliberate?'Deliberate +2; ':'Hasty; ')+'strength '+u.hp+'/10; readiness '+Math.round(fireFactor(u)*100)+'%; suppression '+u.suppression+'/3; cover '+cover(t)+'; smoke -'+smokeCover(s,t)+'; attachments +'+bonus});
+if(t.type!=='hq'&&dist(u,t)===1)shots.push({u:t,t:u,damage:Math.max(0,Math.round(2*t.hp/10*fireFactor(t)*battlefieldFactor(s,t,u))-smokeCover(s,u)-(u.order?.type==='defend'?1:0)),text:'Return fire; readiness '+Math.round(fireFactor(t)*100)+'%; suppression '+t.suppression+'/3; smoke -'+smokeCover(s,u)});
+}
+for(const {u,t,damage,text} of shots){t.hp=Math.max(0,t.hp-damage);if(damage>0)suppress(t,1);events.push(u.name+' → '+t.name+': '+damage+' losses. '+text+'.');}
+return hit;
+}
+// Mission orders persist; the plan is pure and uses only observed enemy positions.
+const missionTypes=['seize','defend','support','reserve'],commandLevels=['Regiment','Division','Corps','Army'];
+function commandValid(s){return typeof s.commandMode==='boolean'&&commandLevels.includes(s.commandLevel)&&['all','organic'].includes(s.supportPolicy)&&Array.isArray(s.commandReports)&&s.commandReports.length<=40&&s.commandReports.every(r=>typeof r==='string'&&r.length<=1000)&&s.units.every(u=>(u.missionOrder===null||u.missionOrder===undefined||u.side==='us'&&['infantry','tank'].includes(u.type)&&missionTypes.includes(u.missionOrder.type)&&(u.missionOrder.mainEffort===undefined||typeof u.missionOrder.mainEffort==='string'&&s.units.some(v=>v.id===u.missionOrder.mainEffort&&v.side==='us'&&['infantry','tank'].includes(v.type)))&&['cautious','balanced','aggressive'].includes(u.missionOrder.risk)&&typeof u.missionOrder.paused==='boolean'&&(['seize','defend'].includes(u.missionOrder.type)?Number.isInteger(u.missionOrder.objective)&&u.missionOrder.objective>=0&&u.missionOrder.objective<3:typeof u.missionOrder.target==='string'&&u.missionOrder.target.length<=80))&&(u.commandReport===undefined||typeof u.commandReport==='string'&&u.commandReport.length<=1000))}
+function assignMission(s,id,mission){const u=alive(s).find(v=>v.id===id&&v.side==='us'&&['infantry','tank'].includes(v.type));if(s.finished||!u)return 'Select an operational infantry or armor formation.';const candidate={...mission,paused:false};if(!commandValid({...s,units:s.units.map(v=>v.id===id?{...v,missionOrder:candidate}:v)}))return 'Choose a valid mission, objective, and risk policy.';if(['support','reserve'].includes(candidate.type)&&!alive(s).some(v=>v.id===candidate.target&&v.id!==id&&v.side==='us'&&v.type!=='hq'))return 'Choose another operational formation to support.';u.missionOrder=candidate;u.order=null;u.commandReport='Mission assigned; review intentions before resolving.';return null}
+function assignCoordinatedAttack(s,mainId,supportIds,objective,risk='balanced'){
+ if(!Array.isArray(supportIds))return 'Choose supporting maneuver formations.';
+ const ids=[mainId,...supportIds],troops=alive(s);
+ if(s.finished||!Array.isArray(supportIds)||!supportIds.length||new Set(ids).size!==ids.length||!Number.isInteger(objective)||objective<0||objective>2||!['cautious','balanced','aggressive'].includes(risk)||ids.some(id=>!troops.some(u=>u.id===id&&u.side==='us'&&['infantry','tank'].includes(u.type))))return 'Choose a main effort, at least one different maneuver formation, and a valid objective.';
+ for(const id of ids)assignMission(s,id,{type:'seize',objective,risk,mainEffort:mainId});
+ s.commandMode=true;return null;
+}
+function coordinatePlans(s,out,known){
+ for(const main of alive(known).filter(u=>u.missionOrder?.mainEffort===u.id)){
+  const members=alive(known).filter(u=>u.missionOrder?.mainEffort===main.id&&u.missionOrder.objective===main.missionOrder.objective);
+  const plans=members.map(u=>out.proposals.find(p=>p.unit===u.id)).filter(Boolean),lead=plans.find(p=>p.unit===main.id);
+  if(!lead||lead.manual||main.missionOrder.paused){for(const p of plans)if(!p.manual&&p.order?.type==='attack'){p.order=null;p.requiresSupport=false;p.report='Supporting element holds attack: main effort paused or under direct orders.';out.requests=out.requests.filter(r=>r.unit!==p.unit);}continue;}
+  const target=lead.order?.type==='attack'?alive(known).find(t=>t.id===lead.order.target):null;
+  const supporters=members.filter(u=>u.id!==main.id),ready=u=>{const p=plans.find(p=>p.unit===u.id);return p&&!p.manual&&!u.missionOrder.paused&&p.order&&['attack','move'].includes(p.order.type)&&(logistics(known).rows.find(r=>r.id===u.id)?.stock??u.stock)>=1&&supply(known,u)&&commandStatus(known,u,'Regiment').ok&&(!s.advancedRules||u.suppression<2)&&(!operational(s)||u.cohesion>=40)};
+  if(target){
+   const missing=supporters.filter(u=>!ready(u)||dist(u,target)>1);
+   if(!supporters.length||missing.length||!commandStatus(known,main,'Regiment').ok){lead.order=null;lead.requiresSupport=false;lead.report='Main effort holds for coordinated attack: '+(!supporters.length?'supporting formations lost or reassigned':missing.length?missing.map(u=>u.name).join(', ')+' not ready at the target':'command link interrupted')+'.';for(const p of plans)if(p!==lead&&!p.manual&&p.order?.type==='attack'){p.order=null;p.report='Supporting element holds fire until main effort and all supporting formations are ready.';}out.requests=out.requests.filter(r=>!plans.some(p=>p.unit===r.unit));continue}
+   const power=members.reduce((n,u)=>n+Number(combatEstimate(known,{...u,order:null,attackStyle:'hasty'},target).ratio||0),0);
+   for(const p of plans){p.order={type:'attack',target:target.id,style:'hasty'};p.requiresSupport=power<({cautious:1.5,balanced:.85,aggressive:.35}[main.missionOrder.risk]);p.report=(p===lead?'Main effort':'Supporting element')+' executes coordinated attack on '+target.name+' with '+main.name+'; combined estimated ratio '+power.toFixed(1)+':1.';}
+  }else for(const p of plans){p.report=(p===lead?'Main effort: ':'Supporting element for '+main.name+': ')+p.report;if(p!==lead&&!p.manual&&p.order?.type==='attack'){p.order=null;p.requiresSupport=false;p.report+=' Holding attack until main effort can engage.';out.requests=out.requests.filter(r=>r.unit!==p.unit);}}
+ }
+}
+function missionName(s,m){if(!m)return 'Direct control';return ({seize:'Seize ',defend:'Defend ',support:'Support ',reserve:'Reserve for '})[m.type]+(['seize','defend'].includes(m.type)?scenario(s).objectives[m.objective]?.name:s.units.find(u=>u.id===m.target)?.name||'lost formation')}
+function commandRoute(s,u,goal,risk){const q=new RouteQueue({x:u.x,y:u.y,cost:0,score:0,path:[]},(a,b)=>a.score-b.score||a.cost-b.cost),seen=new Set(),occupied=occupiedHexes(s,u),enemies=alive(s).filter(v=>v.side!==u.side),caution={cautious:2,balanced:.75,aggressive:.15}[risk];while(q.length){const p=q.shift(),key=p.x+','+p.y;if(seen.has(key))continue;seen.add(key);if(p.x===goal.x&&p.y===goal.y)return p;if(p.cost>0&&enemyZone(s,p,u.side))continue;for(const n of neighbors(p,s)){if(!stepAllowed(s,u,p,n)||occupied.has(n.x+','+n.y))continue;const cost=moveCost(s,u,p,n),danger=enemies.reduce((v,e)=>v+(dist(n,e)<=range(e)?caution*e.hp/10:0),0);q.push({...n,cost:p.cost+cost,score:p.score+cost+danger,path:[...p.path,n]})}}return null}
+function commandPlan(s){const out={proposals:[],requests:[]};if(!s.commandMode||s.finished)return out;const known={...s,units:s.units.filter(v=>v.side==='us'||!s.fog||spotted(s,v)).map(v=>({...v}))},enemies=alive(known).filter(v=>v.side==='de'),reserved=new Set(known.units.filter(v=>v.side==='us'&&v.order?.type==='move').map(v=>v.order.x+','+v.order.y)),gunsUsed=new Set();let airUsed=!!s.airTarget;const deliveries=logistics(known),ranks={Regiment:0,Division:1,Corps:2,Army:3};
+for(const u of alive(known).filter(v=>v.side==='us'&&v.missionOrder)){
+ const m=u.missionOrder,stock=deliveries.rows.find(r=>r.id===u.id)?.stock??u.stock,ready={...u,stock},p={unit:u.id,mission:missionName(s,m),order:null,route:[],report:'',requiresSupport:false};out.proposals.push(p);
+ if(u.order){p.order={...u.order};p.manual=true;p.report='Direct order overrides the standing mission this turn.';continue}
+ if(m.paused){p.report='Mission paused; awaiting your orders.';continue}
+ const link=commandStatus(known,u,s.commandLevel);if(!link.ok)p.commandWarning='Command link interrupted: '+link.reason+'. Executing standing intent locally; coordinated support may be unavailable. '
+ if(stock===0||!supply(known,u)){p.report='Holding — supply route cut or no reserves after projected deliveries.';continue}
+ if(u.hp<=(m.risk==='cautious'?5:2)||u.fatigue>=4||s.advancedRules&&u.suppression>=2||operational(s)&&u.cohesion<40){p.report='Recovering — '+(u.hp<=(m.risk==='cautious'?5:2)?'strength too low':u.fatigue>=4?'fatigue at maximum':u.suppression>=2?'pinned by suppression':'cohesion below 40')+'. Resting before resuming the mission.';continue}
+ const friend=['support','reserve'].includes(m.type)?alive(known).find(v=>v.id===m.target&&v.side==='us'):null,goal=friend||scenario(s).objectives[m.objective];
+ if(!goal){p.report='Awaiting orders — supported formation eliminated. Assign a new mission.';continue}
+ let threats=enemies.filter(e=>dist(u,e)<=1&&(m.type==='seize'||dist(e,goal)<=2)).sort((a,b)=>dist(a,goal)-dist(b,goal)||a.hp-b.hp||a.id.localeCompare(b.id));
+ const t=threats[0];if(t){const estimate=combatEstimate(known,{...ready,attackStyle:'hasty'},t),threshold={cautious:1.5,balanced:.85,aggressive:.35}[m.risk];p.requiresSupport=!estimate.available||+estimate.ratio<threshold;p.order={type:'attack',target:t.id,style:'hasty'};p.report='Engage '+t.name+'; estimated ratio '+(estimate.ratio||'unavailable')+':1. '+(p.requiresSupport?'Requests support before committing.':'Risk acceptable under '+m.risk+' policy.');
+ const battery=alive(known).slice().sort((a,b)=>(b.attachedTo===u.id?1:0)-(a.attachedTo===u.id?1:0)).filter(g=>g.side==='us'&&g.type==='artillery'&&(!g.attachedTo||g.attachedTo===u.id)&&!g.order&&!g.missionOrder&&!gunsUsed.has(g.id)&&dist(g,t)<=range(g)&&spotted(known,t)&&(!s.advancedRules||g.ammo>=2&&(deliveries.rows.find(r=>r.id===g.id)?.stock??g.stock)>=1)).find(g=>{const issuer=known.units.find(h=>h.id===g.commandId);return g.attachedTo===u.id||issuer&&ranks[issuer.echelon]<=ranks[s.commandLevel]&&commandStatus(known,u,issuer.echelon).ok&&commandStatus(known,g,issuer.echelon).ok});
+ if(battery){gunsUsed.add(battery.id);const organic=battery.attachedTo===u.id||battery.commandId===u.commandId;out.requests.push({id:u.id+':artillery',unit:u.id,target:t.id,kind:'artillery',asset:battery.id,automatic:battery.attachedTo===u.id||s.supportPolicy==='organic'&&organic,reason:p.report,cost:s.advancedRules?'2 ammunition, 2 supply reserves consumed after fire':'2 supply reserves consumed after fire'});}
+ else if(!airUsed&&s.airRemaining>0&&spotted(known,t)&&commandStatus(known,u,'Army').ok){airUsed=true;out.requests.push({id:u.id+':air',unit:u.id,target:t.id,kind:'air',asset:null,automatic:false,reason:p.report,cost:'1 air mission; one strike per turn'});}
+ else p.report+=' No uncommitted support available within range and command authority.';
+ continue}
+ if(operational(s)&&engineerCapable(known,u)&&stock>=2){const river=riverLayout(known),crosses=(u.x<=river.x)!==(goal.x<=river.x),bridge=crosses&&bridgeList(known).find(b=>!b.intact&&dist(u,b)<=1);if(bridge){p.order={type:'repair',target:bridge.id};p.report='Attached engineers repair '+bridge.name+' to open the mission route. No additional approval required.';continue}}
+ const friendlyHolder=alive(known).some(v=>v.id!==u.id&&v.side==='us'&&v.type!=='hq'&&v.x===goal.x&&v.y===goal.y),holdRadius=['support','reserve'].includes(m.type)||friendlyHolder?1:0;if(dist(u,goal)<=holdRadius){p.report=(friendlyHolder?'Friendly formation holds objective — supporting perimeter of ':m.type==='seize'?'Objective reached — holding ':m.type==='defend'?'Defending ':m.type==='reserve'?'In reserve near ':'Supporting ')+p.mission.replace(/^(Seize|Defend|Support|Reserve for) /,'')+'. Awaiting new contacts or orders.';continue}
+ if(m.type==='reserve'&&!enemies.some(e=>dist(e,goal)<=2)&&dist(u,goal)<=2){p.report='Reserve ready — holding near supported formation; no observed threat.';continue}
+ const goals=holdRadius?neighbors(goal,known).filter(n=>dist(n,goal)<=holdRadius):[goal];let routes=goals.map(g=>commandRoute(known,u,g,m.risk)).filter(Boolean).sort((a,b)=>a.score-b.score);
+ let route=routes[0];if(!route){const options=[...reachable(known,u,budget(ready)).keys()].map(k=>{const [x,y]=k.split(',').map(Number);return {x,y}}).filter(n=>n.x<board(s).width&&dist(n,goal)<dist(u,goal)&&!reserved.has(n.x+','+n.y)).map(n=>commandRoute(known,u,n,m.risk)).filter(Boolean).sort((a,b)=>dist(a,goal)-dist(b,goal)||a.score-b.score);route=options[0]}
+ if(!route){p.report='Advance blocked — no legal observed route improves the approach. Clear occupied hexes, restore crossings, or give a direct order.';continue}
+ let spent=0,steps=[];for(const n of route.path){const previous=steps.at(-1)||u,cost=moveCost(known,u,previous,n);if(spent+cost>budget(ready)||reserved.has(n.x+','+n.y))break;steps.push(n);spent+=cost;if(enemyZone(known,n,u.side))break}
+ if(!steps.length){p.report='Holding — route needs more movement points or another formation has reserved the next hex.';continue}
+ const destination=steps.at(-1);reserved.add(destination.x+','+destination.y);p.order={type:'move',x:destination.x,y:destination.y};p.route=steps;p.report='Advance toward '+p.mission.replace(/^(Seize|Defend|Support|Reserve for) /,'')+' via hex '+(destination.x+1)+', '+(destination.y+1)+' ('+spent+' movement points). Route assessed with '+m.risk+' risk policy.';
+}
+// Attached field batteries follow the host's intent without requiring individual moves.
+for(const gun of alive(known).filter(v=>v.side==='us'&&v.type==='artillery'&&v.attachedTo&&!v.order&&!gunsUsed.has(v.id))){const host=alive(known).find(v=>v.id===gun.attachedTo&&v.missionOrder&&!v.missionOrder.paused);if(!host)continue;const p={unit:gun.id,mission:'Attached support for '+host.name,order:null,route:[],requiresSupport:false,report:'Attached battery holds in support of '+host.name+'.'},stock=deliveries.rows.find(r=>r.id===gun.id)?.stock??gun.stock;out.proposals.push(p);if(stock<1||!supply(known,gun)){p.report='Attached battery holding — insufficient reserves or supply route cut.';continue}const hostPlan=out.proposals.find(v=>v.unit===host.id),target=hostPlan?.order?.type==='attack'?enemies.find(e=>e.id===hostPlan.order.target):null;if(target&&dist(gun,target)<=range(gun)&&spotted(known,target)&&(!s.advancedRules||gun.ammo>=2)){p.order={type:'attack',target:target.id,mission:'destructive'};p.report='Attached artillery supports '+host.name+' against '+target.name+' under existing authority.';continue}const goal=hostPlan?.order?.type==='move'?hostPlan.order:host;if(dist(gun,goal)<=2)continue;const options=[...reachable(known,gun,budget({...gun,stock})).keys()].map(key=>{const [x,y]=key.split(',').map(Number);return {x,y}}).filter(n=>n.x<board(s).width&&dist(n,goal)<dist(gun,goal)&&!reserved.has(n.x+','+n.y)&&!enemies.some(e=>dist(n,e)<=1)).sort((a,b)=>dist(a,goal)-dist(b,goal)||dist(a,gun)-dist(b,gun));if(options[0]){const n=options[0],route=path(known,gun,n);p.order={type:'move',x:n.x,y:n.y};p.route=route?.path||[];reserved.add(n.x+','+n.y);p.report='Attached battery follows '+host.name+' toward hex '+(n.x+1)+', '+(n.y+1)+'.'}else p.report='Attached battery cannot follow — no safe legal route this turn.';}
+coordinatePlans(s,out,known);for(const p of out.proposals)if(p.commandWarning)p.report=p.commandWarning+p.report;return out}
+function applyCommandPlan(s,decisions={}){const plan=commandPlan(s),reports=[];for(const p of plan.proposals){const u=s.units.find(v=>v.id===p.unit);if(!u)continue;if(p.manual){u.commandReport=p.report;reports.push(u.name+' — '+p.report);continue;}const requests=plan.requests.filter(r=>r.unit===u.id),held=requests.some(r=>decisions[r.id]==='hold'),approved=requests.filter(r=>r.automatic||decisions[r.id]==='approve');let report=p.report;
+ if(held){u.order=null;report='Holding by your instruction; mission retained.'}
+ else if(p.requiresSupport&&!approved.length){u.order=null;report+=' Holding under '+(u.missionOrder?.risk||'balanced')+' risk policy; support not approved.'}
+ else {u.order=p.order;for(const r of approved){if(r.kind==='air'){s.airTarget=r.target}else{const gun=s.units.find(v=>v.id===r.asset);if(gun&&!gun.order)gun.order={type:'attack',target:r.target,mission:'destructive'}}report+=' '+(r.automatic?'Delegated':'Approved')+' '+r.kind+' support assigned.'}}
+ u.commandReport=report;reports.push(u.name+' — '+report);
+}
+ for(const main of alive(s).filter(u=>u.missionOrder?.mainEffort===u.id)){
+  const group=alive(s).filter(u=>u.missionOrder?.mainEffort===main.id&&u.missionOrder.objective===main.missionOrder.objective),planned=plan.proposals.filter(p=>group.some(u=>u.id===p.unit)&&p.order?.type==='attack'&&!p.manual);
+  if(planned.length&&group.some(u=>!u.order||u.order.type!=='attack'))for(const u of group){const p=planned.find(p=>p.unit===u.id);if(p){u.order=null;u.commandReport='Coordinated attack held: another element lacks approval or cannot execute. Mission retained.';reports.push(u.name+' — '+u.commandReport);}}
+ }
+ return reports}
+function finishCommandReports(s,before,executed,events){
+const reports=[];
+for(const u of s.units.filter(v=>v.side==='us'&&v.type!=='hq')){
+ const old=before.units.find(v=>v.id===u.id),o=executed.get(u.id),m=u.missionOrder;
+ const goal=m&&['seize','defend'].includes(m.type)?scenario(s).objectives[m.objective]:null;
+ const parts=['Turn '+s.turn+' SITREP; hex '+(u.x+1)+', '+(u.y+1)+'.'];
+ if(u.hp<=0)parts.push('Formation eliminated; mission cannot continue.');
+ else {
+  if(o?.type==='move')parts.push(old&&(old.x!==u.x||old.y!==u.y)?'Moved '+dist(old,u)+' hexes. '+(u.x===o.x&&u.y===o.y?'Ordered destination reached.':'Destination not reached; terrain, contact, or movement allowance limits progress.'):'No movement completed; route or passage blocked.');
+  else if(o?.type==='attack')parts.push(events.filter(t=>t.startsWith(u.name+': fire not executed')||t.includes(u.name+' → ')).join(' ')||'Attack order issued; no effective fire reported.');
+  else if(o?.type==='defend')parts.push('Defending current position; one additional cover point. Order remains active.');
+  else if(o?.type==='prepare')parts.push(u.preparedTarget?'Assault preparation completed; deliberate attack available next turn.':'Assault preparation failed; target unavailable.');
+  else parts.push(u.commandReport&&!u.commandReport.startsWith('Turn ')?u.commandReport:'Holding position and recovering.');
+  if(goal&&dist(u,goal)===0)parts.push('At '+goal.name+'; holding objective.');
+  parts.push('Strength '+u.hp+'/10'+(old?'; net losses '+Math.max(0,old.hp-u.hp):'')+'; fatigue '+u.fatigue+'/4; reserves '+u.stock+'/3.');
+  if(s.advancedRules)parts.push('Suppression '+u.suppression+'/3'+(u.type==='artillery'?'; ammunition '+u.ammo+'/6':'')+'.');
+  const issues=[];if(!supply(s,u))issues.push('restore supply route');else if(u.stock<2)issues.push('resupply');if(u.fatigue>=3)issues.push('rest');if(u.suppression>=2)issues.push('suppress enemy before advancing');
+  const link=commandStatus(s,u,'Regiment');if(!link.ok)issues.push(link.reason);
+  if(issues.length)parts.push('Needs: '+issues.join('; ')+'.');
+ }
+ u.commandReport=parts.join(' ').slice(0,1000);reports.push((u.name+' — '+u.commandReport).slice(0,1000));
+}
+s.commandReports=[...reports,...s.commandReports].slice(0,40);
+}
+
+function subordinateInitiative(s,events){
+ for(const u of alive(s).filter(v=>v.side==='us'&&['tank','infantry'].includes(v.type))){
+  const enemies=alive(s).filter(v=>v.side!==u.side&&dist(v,u)<=2&&(!s.fog||spotted(s,v,u.side)));
+  const danger=enemies.length>0,critical=u.hp<=3||u.cohesion<=25,damaged=u.hp<=5||u.cohesion<=45;
+  const policy=u.disengagePolicy==='hold'?'hold':u.disengagePolicy==='withdraw'?'withdraw':'initiative';
+  if(!damaged){u.withdrawalRequest=null;continue}
+  if(!danger){if(u.withdrawalRequest)u.withdrawalRequest=null;continue}
+  if(!u.withdrawalRequest||u.withdrawalRequest.turn!==s.turn){
+   u.withdrawalRequest={turn:s.turn,status:critical?'urgent':'pending'};
+   events.push('COMMAND REQUEST — '+u.name+': '+(critical?'critical combat losses':'heavy losses')+' ('+u.hp+'/10 strength). Request permission to disengage or reposition.');
+  }
+  if(policy==='hold'){events.push('COMMAND — '+u.name+': obeying hold-at-all-costs directive despite losses.');continue}
+  const imminent=critical&&(u.hp<=2||u.cohesion<=15||u.suppression>=2);
+  if(policy==='withdraw'||imminent){
+   const known={...s,weather:'fog'};
+   const retreat=withdrawalOrder(known,u);
+   if(retreat){u.order=retreat;u.withdrawalRequest.status='acting';events.push('EMERGENCY DISENGAGEMENT — '+u.name+': '+(policy==='withdraw'?'executing authorized withdrawal':'commander exercises emergency initiative to avoid destruction')+'.');}
+   else events.push('COMMAND — '+u.name+': withdrawal requested but no safer reachable position identified.');
+  }else if(u.order?.type==='attack'&&critical){u.order={type:'defend'};events.push('LOCAL INITIATIVE — '+u.name+': suspends attack and establishes defensive posture pending orders.')}
+ }
+}
+function resolve(s,decisions={}){if(s.finished)return s;let before=JSON.parse(JSON.stringify(s)),events=[];if(s.airRemaining===undefined)s.airRemaining=3;if(s.airTarget===undefined)s.airTarget=null;migrate(s);if(scenario(s).sandbox&&s.sandbox?.autoResupply)sandboxAction(s,'replenish');for(const u of s.units){u.reacted=false;u.reserveCommitted=u.order?.type==='reserve'}if(s.advancedRules)s.smoke=[];let suppressionHits=new Set();if(commandServices)commandServices.beginTurn(s,events);let deliveries=logistics(s);if(commandServices)commandServices.dispatch(s,deliveries,events);s.lastSupply={turn:s.turn,capacity:deliveries.capacity,delivered:deliveries.capacity-deliveries.unused,unused:deliveries.unused,blocked:deliveries.rows.filter(r=>!r.route).length};for(let r of deliveries.rows){let u=s.units.find(u=>u.id===r.id);u.stock=r.stock;events.push('SUPPLY — '+u.name+': '+(r.route?'+'+r.delivery+' delivered':'route cut')+', reserves '+u.stock+'/3 ('+u.priority+' priority; '+(s.allocationMode==='manual'?'requested '+r.request:'automatic')+').')}for(let u of alive(s)){u.supplied=supply(s,u);if(u.side==='de'&&u.supplied)u.stock=Math.min(3,u.stock+1);}
+// Plan with observed positions only. Never inspect Allied queued orders.
+events.push(...applyCommandPlan(s,decisions).map(r=>'COMMAND — '+r));for(const u of alive(s).filter(v=>v.side==='us'&&v.disengagePolicy==='withdraw'&&!v.order&&(v.hp<=5||v.cohesion<=45))){const retreat=withdrawalOrder({...s,weather:'fog'},u);if(retreat){u.order=retreat;events.push('COMMAND — '+u.name+' attempts to disengage under local authority.')}}subordinateInitiative(s,events);planOpponent(s);if(operational(s))operationalEngineering(s,events);
+for(let u of alive(s)){if(u.order?.type!=='move')continue;if(s.advancedRules){u.preparedTarget=null;u.preparedTurn=0}let p=path(s,u,u.order);if(p){let spent=0;for(let n of p.path){if(!stepAllowed(s,u,u,n)||alive(s).some(v=>v.id!==u.id&&v.x===n.x&&v.y===n.y))break;spent+=moveCost(s,u,u,n);if(spent>budget(u))break;u.x=n.x;u.y=n.y;if(enemyZone(s,u,u.side)){events.push('CONTACT — '+u.name+' halts in an enemy zone of control.');break}}events.push(u.name+' advances to '+(u.x+1)+', '+(u.y+1)+'.')}else events.push(u.name+' cannot advance: route blocked.')}
+if(operational(s))operationalReactions(s,events);
+// Air support is assigned to an enemy formation and resolves after movement.
+if(s.airTarget&&s.airRemaining>0){let target=alive(s).find(u=>u.id===s.airTarget&&u.side==='de');if(target&&(!s.fog||spotted(s,target))){s.airRemaining--;let damage=2+Math.floor(random(s)*3);shotsAir(s,target,damage);events.push('AIR SUPPORT — fighter-bombers strike '+target.name+': '+damage+' losses. '+s.airRemaining+' missions remain.')}else events.push('AIR SUPPORT — target unavailable; mission retained.')}s.airTarget=null;
+if(scenario(s).sandbox&&s.sandbox?.unlimitedAir)s.airRemaining=scenario(s).air;
+// Attached field guns/tanks inherit a host fire order only if they have no explicit order.
+for(const u of alive(s).filter(u=>u.side==='us'&&u.attachedTo&&!u.order)){const host=alive(s).find(h=>h.id===u.attachedTo);if(host?.order?.type==='attack'){u.order={...host.order};events.push('ATTACHED FIRE — '+u.name+' supports '+host.name+'.')}}
+if(s.advancedRules){suppressionHits=advancedFire(s,events)}else{
+// Batteries resolve first; ground exchanges remain simultaneous within their phase.
+for(const phase of ['artillery','ground']){
+let shots=[];for(let u of alive(s)){if(u.type==='hq'||u.order?.type!=='attack'||(phase==='artillery')!==(u.type==='artillery'))continue;let t=alive(s).find(v=>v.id===u.order.target&&v.side!==u.side);if(!t||dist(u,t)>range(u)||(s.fog&&!spotted(s,t,u.side))){events.push(u.name+': fire not executed — '+(!t?'target already destroyed':dist(u,t)>range(u)?'target moved out of range ('+dist(u,t)+' hexes; range '+range(u)+')':'target no longer spotted')+'.');continue}let cover=defenseCover(s,t),bonus=supportBonus(s,u,t,cover),damage=Math.max(1,Math.round((u.type==='tank'?4:3)*(u.hp/10)*fireFactor(u)*battlefieldFactor(s,u,t)-cover+(random(s)*2)))+bonus;shots.push({u,t,damage,why:(bonus?'Includes +'+bonus+' attachment support. ':'')+'strength '+u.hp+'/10; readiness '+Math.round(fireFactor(u)*100)+'%; cover -'+cover+'; attachment support +'+bonus+(u.type==='artillery'?'; bombardment before ground assault':'')});if(u.type!=='artillery'&&t.type!=='hq'&&dist(u,t)===1)shots.push({u:t,t:u,damage:Math.max(1,Math.round(2*t.hp/10*fireFactor(t)*battlefieldFactor(s,t,u))),why:'return fire; strength '+t.hp+'/10; readiness '+Math.round(fireFactor(t)*100)+'%'})}
+for(let {u,t,damage,why} of shots){t.hp=Math.max(0,t.hp-damage);events.push(u.name+' → '+t.name+': '+damage+' losses. '+why+'.')}
+}
+}
+const executed=new Map(s.units.map(u=>[u.id,u.order?{...u.order}:null]));
+for(let u of s.units){if(u.hp<=0)continue;if(u.order&&u.order.type!=='defend'){u.fatigue=Math.min(4,u.fatigue+1)}else{u.fatigue=Math.max(0,u.fatigue-(u.order?.type==='defend'?1:2));if(!u.order&&u.stock>=2&&u.supplied){const medical=activeAttachments(s,u).filter(a=>a.kind==='medical').length,old=u.hp;u.hp=Math.min(10,u.hp+1+medical);if(medical&&u.hp>old)events.push('MEDICAL SUPPORT — '+u.name+' recovers '+(u.hp-old)+' strength while resting.');}}if(s.advancedRules){if(!suppressionHits.has(u.id))u.suppression=Math.max(0,u.suppression-(u.order?1:2));if(u.type==='artillery'&&!u.order&&u.stock>=2&&u.supplied){const old=u.ammo;u.ammo=Math.min(6,u.ammo+1);if(u.ammo>old)events.push('AMMUNITION — '+u.name+' replenishes to '+u.ammo+'/6.')}if(u.order?.type==='attack'||(u.preparedTurn<s.turn&&u.order?.type!=='prepare')){u.preparedTarget=null;u.preparedTurn=0}}
+if(operational(s)&&!suppressionHits.has(u.id))u.cohesion=Math.min(100,u.cohesion+(u.order?5:15));
+u.stock=Math.max(0,u.stock-consumption(u));if(u.order?.type!=='defend')u.order=null;u.reacted=false;u.reserveCommitted=false}
+releaseLostAttachments(s,events);
+scenario(s).objectives.forEach((o,i)=>{let u=alive(s).find(u=>u.type!=='hq'&&u.x===o.x&&u.y===o.y);if(u)s.owners[i]=u.side});
+// Missing scheduled units remain pending, including in saves past their due turn.
+// Check all units by ID so eliminated reinforcements never spawn again.
+if(!scenario(s).sandbox&&s.turn>=scenario(s).reinforce&&!(operational(s)&&s.utahEvents&&scenario(s).id==='utah')){
+ for(const [id,baseName,y] of [['j','Follow-up infantry',1],['k','Beach reserve',8]]){
+  if(s.units.some(u=>u.id===id))continue;
+  const name=scenario(s).faction==='ca'?'Canadian '+baseName.toLowerCase():baseName;
+  if(alive(s).some(u=>u.x===8&&u.y===y)){
+   events.push('REINFORCEMENT DELAY — '+name+' waiting: entry hex 9, '+(y+1)+' is occupied. Will retry next turn.');
+   continue;
+  }
+  const reinforcement=unit(id,name,'us',8,y);reinforcement.nation=scenario(s).faction;
+  s.units.push(reinforcement);events.push('REINFORCEMENT — '+name+' arrives at the eastern supply edge, hex 9, '+(y+1)+'.');
+ }
+}
+if(operational(s))operationalArrivals(s,events);
+if(scenario(s).sandbox)sandboxAction(s,"arrivals",{events});
+if(s.commandMode){const standing=alive(s).filter(u=>u.side==='us'&&u.missionOrder&&!u.missionOrder.paused);for(const u of alive(s).filter(u=>u.side==='us'&&['infantry','tank'].includes(u.type)&&!before.units.some(v=>v.id===u.id))){const donors=standing.filter(v=>!['support','reserve'].includes(v.missionOrder.type)||v.missionOrder.target!==u.id).sort((a,b)=>dist(u,a)-dist(u,b));if(donors[0]&&!assignMission(s,u.id,donors[0].missionOrder)){u.commandReport='Reinforcement joins existing intent: '+missionName(s,u.missionOrder)+'.';events.push('COMMAND — '+u.name+': '+u.commandReport)}}}
+if(commandServices)commandServices.patrolTurn(s,events);updateIntel(s);if(commandServices)commandServices.deliverReports(s,events);let c=scenario(s),held=s.owners.filter(x=>x==='us').length;if(c.sandbox){s.finished=false;s.result='';}else if(!alive(s).some(u=>u.side==='us'&&u.type!=='hq')){s.finished=true;s.result='German victory — Allied forces eliminated.'}else if(!alive(s).some(u=>u.side==='de')||(c.mode!=='hold'&&held===3)){s.finished=true;s.result=c.nation+' victory — all objectives secured.'}else if(s.turn>=c.turns){s.finished=true;s.result=held===3?c.nation+' victory — all objectives held.':held>=2?'Limited '+c.nation+' victory — two objectives held.':'German victory — objectives denied.'}
+for(const u of s.units.filter(v=>v.side==='us'&&v.type!=='hq')){
+ const previous=before.units.find(v=>v.id===u.id);
+ if(!previous)continue;
+ const restored=Math.max(0,u.hp-previous.hp);
+ if(restored>0){u.replacementQuality=Math.max(.5,Math.round(((u.replacementQuality??1)-restored*.018)*1000)/1000);events.push('G-1 — '+u.name+': '+restored+' abstract strength points restored; integrating replacements, effectiveness '+Math.round(u.replacementQuality*100)+'%.');}
+}
+finishCommandReports(s,before,executed,events);if(commandServices)commandServices.finishTurn(s,events);s.log=[`Turn ${s.turn} resolved.`,...events,...s.log].map(t=>t.slice(0,499)).slice(0,120);s.reports.push(makeReport(s,before,s.turn));s.supplyReports.push(makeSupplyReport(s,before,s.turn));s.supplyReports=s.supplyReports.slice(-20);s.reports=s.reports.slice(-20);if(!s.finished)s.turn++;return s}
+function reachable(s,u,allowance=budget(u)){let queue=new RouteQueue({x:u.x,y:u.y,cost:0},(a,b)=>a.cost-b.cost),best=new Map(),occupied=occupiedHexes(s,u);while(queue.length){let p=queue.shift(),key=p.x+','+p.y;if(best.has(key))continue;best.set(key,p.cost);if(p.cost>0&&enemyZone(s,p,u.side))continue;for(let n of movementNeighbors(s,u,p)){let cost=p.cost+moveCost(s,u,p,n);if(stepAllowed(s,u,p,n)&&cost<=allowance&&!occupied.has(n.x+','+n.y))queue.push({...n,cost})}}return best}
+function makeReport(s,before=null,turn=0){let c=scenario(s),friendly=s.units.filter(u=>u.side==='us'),active=friendly.filter(u=>u.hp>0),seen=contacts(s),stale=s.intel.filter(r=>!seen.some(u=>u.id===r.id)),known=s.fog?s.intelObjectives:s.owners,loss=before?before.units.filter(u=>u.side==='us').reduce((n,u)=>n+Math.max(0,u.hp-(s.units.find(v=>v.id===u.id)?.hp??0)),0):0,arrived=before?active.filter(u=>!before.units.some(v=>v.id===u.id)):[];
+let minutes=c.start+turn*30,time=clock(s,minutes);let lines=['SITUATION — '+c.date+', '+time+' hours. '+(turn?'Turn '+turn+' completed.':'Opening briefing.'),c.brief,'OBJECTIVES — '+c.objectives.map((o,i)=>o.name+': '+(known[i]==='us'?c.nation:known[i]==='de'?'German':'unconfirmed / neutral')).join('; ')+'.','FRIENDLY FORCES — '+active.length+' operational units; '+active.reduce((n,u)=>n+u.hp,0)+' total strength points. '+(before?loss+' net strength points lost this turn; '+friendly.filter(u=>u.hp===0).length+' units eliminated in battle.':'Opening deployment.'),'SUPPLY — '+supplyCapacity(s)+' delivery points forecast per turn (base '+c.supply+' plus regimental distribution). '+active.filter(u=>!supply(s,u)).length+' units with cut routes; '+active.filter(u=>u.stock<2).length+' units below 2/3 reserves after consumption.','AIR SUPPORT — '+s.airRemaining+' of '+c.air+' missions remain.','WEATHER — '+(s.weather||'clear').toUpperCase()+'; current observation range '+({clear:'normal',rain:'2 hexes',fog:'1 hex',night:'1 hex'}[s.weather||'clear'])+'.', 'INTELLIGENCE — '+seen.length+' confirmed current contacts; '+stale.length+' last-known positions. '+(s.fog?'Fog of war active. No total enemy strength estimate.':'Fog of war off; map shows all enemies. Intelligence still records troop sightings.'),'REINFORCEMENTS — '+(c.sandbox?'Available on request from Training controls; '+(s.sandbox?.queue?.length||0)+' pending.':arrived.length?arrived.map(u=>u.name).join(', ')+' arrived.':s.turn<c.reinforce?'Expected after turn '+c.reinforce+' if entry hexes are free.':'No arrivals this turn.')];
+const g1=active.filter(u=>u.type!=='hq').map(personnelState),authorized=g1.reduce((n,p)=>n+p.personnel,0),present=g1.reduce((n,p)=>n+p.present,0);
+lines.push('G-1 PERSONNEL — Planning estimate '+present+'/'+authorized+' personnel-equivalent present ('+(authorized?Math.round(present/authorized*100):0)+'%). '+g1.filter(p=>p.readiness<50).length+' formations below 50% strength; '+g1.filter(p=>p.quality<.9).length+' formations integrating lower-experience replacements. Counts are indicative strength equivalents from abstract HP, not observed casualty rolls or documented historical establishments.');
+if(before){const quiet=!s.log.slice(1,s.log.indexOf(before.log[0])).some(t=>/ATTACK|COMBAT|DEFENSIVE FIRE|COUNTERATTACK| → /.test(t));if(quiet)lines.push('OPERATIONS TEMPO — No significant combat dispatch this turn. Units may be consolidating, maintaining equipment, improving positions, resting, or awaiting orders; absence of fighting does not imply that nothing is happening.');}
+lines.push('HEADQUARTERS — '+headquarters(s).map(h=>h.echelon+': '+(h.hp<=0?'eliminated':h.hp<=3?'disrupted':'hex '+(h.x+1)+', '+(h.y+1))).join('; ')+'. '+active.filter(u=>u.type!=='hq'&&!commandStatus(s,u).ok).length+' formations outside the full Army command chain. '+(s.advancedRules?'Reserve support requires its issuing HQ chain.':'Command restrictions activate with Advanced Rules.'));
+if(s.advancedRules)lines.push('ADVANCED RULES — '+active.filter(u=>u.suppression>=2).length+' friendly formations pinned (suppression 2–3); '+active.filter(u=>u.type==='artillery').map(u=>u.name+': ammunition '+u.ammo+'/6').join('; ')+'. Smoke screens: '+s.smoke.length+'.');
+if(s.commandMode)lines.push('COMMAND MISSIONS — '+s.commandReports.slice(0,8).join(' ').slice(0,2750));
+lines.push('ATTACHMENTS — '+s.supportAssets.filter(a=>a.assignedTo).length+' of '+supportCatalog.length+' off-map support units assigned; '+alive(s).filter(u=>u.attachedTo).length+' field units attached. '+active.filter(u=>attachments(s,u).length||fieldAttachments(s,u).length).map(u=>u.name+': '+[...attachments(s,u).map(a=>a.name),...fieldAttachments(s,u).map(a=>a.name)].join(', ')).join('; '));
+if(operational(s))lines.push('OPERATIONS — LOS and enemy zones active; '+bridgeList(s).filter(b=>!b.intact).length+' damaged crossings; '+active.filter(u=>u.cohesion<40).length+' formations with cohesion below 40. '+(scenario(s).id==='utah'&&s.utahEvents?'Landing waves and airborne detachments active; German reserve timing uncertain.':'Scenario reinforcements follow their normal schedule.'));
+if(before){let fire=s.log.slice(1,s.log.indexOf(before.log[0]));let results=fire.filter(t=>t.includes(' → ')||t.includes('fire not executed')||t.startsWith('PREPARATION')||t.startsWith('SMOKE')||t.startsWith('DEFENSIVE FIRE')||t.startsWith('RESERVE')||t.startsWith('COUNTERATTACK')||t.startsWith('ENGINEERS'));if(results.length)lines.push('COMBAT — '+(results.join(' ').length>2800?results.join(' ').slice(0,2750)+'… See battle dispatches for remaining results.':results.join(' ')));}
+if(before&&s.lastSupply)lines.push('DELIVERIES — '+s.lastSupply.delivered+' points delivered; '+s.lastSupply.unused+' unused; '+s.lastSupply.blocked+' cut routes. '+(s.allocationMode==='manual'?'Manual requests':'Automatic allocation')+' applied before movement.');if(seen.length)lines.push('CURRENT CONTACTS — '+seen.map(u=>u.name+' at '+(u.x+1)+', '+(u.y+1)).join('; ')+'.');if(stale.length)lines.push('LAST KNOWN — '+stale.map(r=>r.name+': turn '+r.seenTurn+', hex '+(r.x+1)+', '+(r.y+1)).join('; ')+'.');lines.push(s.finished?'RESULT — '+s.result:'COMMANDER’S NOTE — '+(active.some(u=>!supply(s,u))?'Restore cut supply routes before committing isolated formations.':active.some(u=>u.stock<2)?'Review supply priorities; low reserves reduce readiness.':c.mode==='hold'?'Keep at least two objectives until the final turn.':'Coordinate infantry, armor, artillery, and air support for the next advance.'));return {turn,lines}}
+function makeSupplyReport(s,before=null,turn=0){
+let c=scenario(s),active=alive(s).filter(u=>u.side==='us'&&u.type!=='hq'),known=s.fog&&!s.finished?{...s,units:s.units.filter(u=>u.side==='us'||spotted(s,u))}:s,plan=logistics(known),use=active.reduce((n,u)=>n+consumption(u,s),0),reserves=active.reduce((n,u)=>n+u.stock,0),minutes=c.start+turn*30,time=clock(s,minutes);
+let lines=['SUPPLY SITUATION — '+c.date+', '+time+' hours. '+(turn?'Turn '+turn+' logistics report.':'Opening quartermaster briefing.'),'INCOMING SUPPLY — '+supplyCapacity(s)+' delivery points forecast this turn (base '+c.supply+' plus regimental distribution). All northern, central, and southern entries share this allowance. '+(s.forwardSupplyEnabled?'Unused transport capacity expires; undelivered stocks remain at supply points.':'Unused points expire.'),'CONSUMPTION — '+use+' points for current orders: infantry/resting units use 1; moving tanks and firing artillery use 2. '+(use>supplyCapacity(s)?'Demand exceeds replenishment by '+(use-supplyCapacity(s))+'; reserves will fall.':'Incoming supply can cover current consumption if routes and allocations permit.'),'RESERVES — '+reserves+' points across '+active.length+' active formations; capacity '+active.length*3+'. '+active.filter(u=>u.stock<2).length+' formations below full-readiness reserves (2/3).', 'DELIVERY CONTROL — '+(s.allocationMode==='manual'?'Manual unit requests':'Automatic priority allocation')+'. High priority first, then Normal, then Low; ties favor lower reserves, then unit ID.'];
+if(before&&s.lastSupply){let last=s.lastSupply,dispatch=logistics(before);lines.push('LAST DISPATCH — '+last.delivered+' of '+(last.delivered+last.unused)+' points delivered; '+last.unused+(s.forwardSupplyEnabled?' transport unused; ':' expired; ')+last.blocked+' routes cut. Deliveries arrived before movement.');lines.push('UNIT DELIVERIES — '+dispatch.rows.map(r=>{let u=before.units.find(u=>u.id===r.id);return u.name+': +'+r.delivery+(r.route?'':' (route cut)')}).join('; ')+'.')}
+lines.push('ROUTE NETWORK — '+plan.rows.filter(r=>r.route).length+' planned routes open; '+plan.rows.filter(r=>!r.route).length+' cut. '+(s.fog?'Route forecasts use observed positions; unseen enemies can block dispatch.':'All current enemy positions are available for route planning.'));
+lines.push('NEXT DISPATCH FORECAST — '+(plan.capacity-plan.unused)+' of '+plan.capacity+' points allocated; '+plan.unused+' unassigned; '+plan.rows.reduce((n,r)=>n+r.shortfall,0)+' requested points unmet. Forecast assumes current positions and orders.');
+lines.push('UNIT RESERVE FORECAST — '+plan.rows.map(r=>{let u=active.find(u=>u.id===r.id);return u.name+': '+u.stock+' + '+r.delivery+' delivery - '+r.use+' use → '+r.after+'/3'}).join('; ')+'.');
+let cuts=plan.rows.filter(r=>!r.route),short=plan.rows.filter(r=>r.shortfall),low=plan.rows.filter(r=>r.after<2);
+lines.push('QUARTERMASTER PRIORITIES — '+(cuts.length?'Restore '+cuts.length+' cut routes; try another entry sector or clear occupied hexes. ':'' )+(short.length?'Review '+short.length+' unmet requests and redistribute the pool. ':'' )+(low.length?'Plan for '+low.length+' formations below 2/3 reserves after consumption. ':'All formations forecast at full-readiness reserve levels. ')+(plan.unused?'Assign the remaining '+plan.unused+' points if units have reserve capacity.':''));
+lines.push('COMMAND ACTION — Select My delivery requests to ration each formation. Review entry sector and route preference for the selected unit. Resolve turn dispatches supplies and executes queued battle orders.');
+return {turn,lines}}
+
+function clock(s,minutes){const day=scenario(s).sandbox?"D"+(Math.floor(minutes/1440)+1)+" ":"";minutes%=1440;return day+Math.floor(minutes/60).toString().padStart(2,"0")+(minutes%60).toString().padStart(2,"0")}
+function sandboxAction(s,kind,options={}){return root.ProvingGround?root.ProvingGround.action(s,kind,options):"Training controls unavailable."}
+root.Game={clock,board,unitLimit,sandboxAction,establishment,personnelState,assignCoordinatedAttack,defenseCover,RouteQueue,random,installCommandServices,edgeSupplyRoute,sightRange,tacticalContact,withdrawalOrder,missionTypes,commandLevels,commandValid,assignMission,missionName,commandRoute,commandPlan,applyCommandPlan,headquartersPositions,movementNeighbors,regimentalSupply,supplyCapacity,scenarioSpecValid,registerScenario,operational,operationalValid,toggleOperational,riverLayout,bridgeList,riverCrossing,passage,engineerCapable,enemyZone,supplyInterdicted,stepAllowed,moveCost,lineOfSight,combatEstimate,hqCatalog,headquarters,headquartersValid,commandLink,commandStatus,supportAvailable,activeAttachments,assignCommander,advancedValid,toggleAdvanced,prepared,smokeCover,supportCatalog,attachments,fieldAttachments,attachmentValid,assignAttachment,supportBonus,W,H,objectives,cell,neighbors,dist,fresh,alive,path,range,budget,planOpponent,resolve,supply,supplyRoute,migrate,consumption,logistics,fireFactor,spotted,contacts,updateIntel,visibleLog,scenarios,scenario,reachable,makeReport,makeSupplyReport};if(typeof module!=='undefined')module.exports=root.Game;
+})(typeof window==='undefined'?globalThis:window);

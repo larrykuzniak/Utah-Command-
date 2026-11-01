@@ -1,6 +1,6 @@
 'use strict';
 const assert=require('node:assert/strict');
-for(const file of ['../game/engine.js','../game/supply/engine.js']){
+for(const file of ['../game/engine.js']){
  const G=require(file);
  for(const advanced of [false,true]){
   let s=G.fresh();if(advanced)G.toggleAdvanced(s,true);

@@ -335,7 +335,67 @@ return hit;
 }
 // Mission orders persist; the plan is pure and uses only observed enemy positions.
 const missionTypes=['seize','defend','support','reserve'],commandLevels=['Regiment','Division','Corps','Army'];
-function commandValid(s){return typeof s.commandMode==='boolean'&&commandLevels.includes(s.commandLevel)&&['all','organic'].includes(s.supportPolicy)&&Array.isArray(s.commandReports)&&s.commandReports.length<=40&&s.commandReports.every(r=>typeof r==='string'&&r.length<=1000)&&s.units.every(u=>(u.missionOrder===null||u.missionOrder===undefined||u.side==='us'&&['infantry','tank'].includes(u.type)&&missionTypes.includes(u.missionOrder.type)&&(u.missionOrder.mainEffort===undefined||typeof u.missionOrder.mainEffort==='string'&&s.units.some(v=>v.id===u.missionOrder.mainEffort&&v.side==='us'&&['infantry','tank'].includes(v.type)))&&['cautious','balanced','aggressive'].includes(u.missionOrder.risk)&&typeof u.missionOrder.paused==='boolean'&&(['seize','defend'].includes(u.missionOrder.type)?Number.isInteger(u.missionOrder.objective)&&u.missionOrder.objective>=0&&u.missionOrder.objective<3:typeof u.missionOrder.target==='string'&&u.missionOrder.target.length<=80))&&(u.commandReport===undefined||typeof u.commandReport==='string'&&u.commandReport.length<=1000))}
+// Division intent is addressed to regiments; existing battalion AI executes it.
+function regimentOf(u){if(u.side!=='us'||u.type!=='infantry')return null;const m=u.name.match(/^\d+\/(\d+)\s+Infantry/i);return m?'reg-'+m[1]:null}
+function regiments(s){const groups=new Map();for(const u of s.units){const id=regimentOf(u);if(!id)continue;if(!groups.has(id))groups.set(id,{id,name:id.slice(4)+({8:'th',12:'th',22:'nd'}[id.slice(4)]||'th')+' Infantry Regiment',members:[]});groups.get(id).members.push(u)}return [...groups.values()].sort((a,b)=>Number(a.id.slice(4))-Number(b.id.slice(4)))}
+function regimentalValid(s){
+ const orders=s.regimentalOrders;if(orders===undefined)return true;
+ if(!orders||typeof orders!=='object'||Array.isArray(orders)||Object.keys(orders).length>12)return false;
+ const groups=regiments(s),ids=new Set(groups.map(r=>r.id));
+ return Object.entries(orders).every(([id,o])=>ids.has(id)&&o&&['seize','defend','support','reserve'].includes(o.type)&&['cautious','balanced','aggressive'].includes(o.risk)&&['main','supporting'].includes(o.effort)&&Number.isInteger(o.revision)&&o.revision>0&&Number.isInteger(o.issuedTurn)&&o.issuedTurn>0&&typeof o.paused==='boolean'&&(['seize','defend'].includes(o.type)?Number.isInteger(o.objective)&&o.objective>=0&&o.objective<scenario(s).objectives.length:typeof o.targetRegiment==='string'&&ids.has(o.targetRegiment)&&o.targetRegiment!==id))&&Object.values(orders).filter(o=>o.effort==='main').length<=1&&!regimentalCycle(orders);
+}
+function regimentalCycle(orders){for(const start of Object.keys(orders)){let id=start;const seen=new Set();while(orders[id]&&['support','reserve'].includes(orders[id].type)){if(seen.has(id))return true;seen.add(id);id=orders[id].targetRegiment}}return false}
+function regimentalTasks(s,id,o){
+ const group=regiments(s).find(r=>r.id===id);if(!group)return [];
+ const targetGroup=regiments(s).find(r=>r.id===o.targetRegiment),targets=(targetGroup?.members||[]).filter(u=>u.hp>0);
+ const objective=scenario(s).objectives[o.objective],members=group.members.filter(u=>u.hp>0).slice().sort((a,b)=>(objective?dist(a,objective)-dist(b,objective):0)||b.hp-a.hp||a.id.localeCompare(b.id));
+ return members.map((u,i)=>{
+  let mission,job;
+  if(['seize','defend'].includes(o.type)){
+   if(i<2){mission={type:o.type,objective:o.objective,risk:o.risk};job=i?'Supporting battalion':'Leading battalion'}
+   else{mission={type:'reserve',target:members[0].id,risk:o.risk};job='Regimental reserve'}
+  }else{
+   const target=targets.slice().sort((a,b)=>dist(u,a)-dist(u,b)||a.id.localeCompare(b.id))[0];
+   if(!target)return {unit:u,mission:null,job:'Holding — supported regiment has no operational battalions'};
+   mission={type:o.type,target:target.id,risk:o.risk};job=o.type==='reserve'?'Reserve for '+targetGroup.name:'Support '+targetGroup.name;
+  }
+  return {unit:u,mission:{...mission,paused:o.paused},job};
+ });
+}
+function syncRegimentalOrders(s){
+ if(!s.regimentalOrders||!regimentalValid(s))return;
+ for(const [id,o] of Object.entries(s.regimentalOrders))for(const task of regimentalTasks(s,id,o)){
+  const u=task.unit,b=u.regimentalTask;
+  // Direct interventions and paused battalion missions remain in force until reissued.
+  const targetLost=u.missionOrder&&['support','reserve'].includes(u.missionOrder.type)&&!alive(s).some(v=>v.id===u.missionOrder.target);
+  if(b?.regiment===id&&b.revision===o.revision&&b.job===task.job&&!targetLost)continue;
+  const direct=u.order;
+  u.missionOrder=task.mission;u.regimentalTask={regiment:id,revision:o.revision,job:task.job};u.order=direct;
+  u.commandReport=task.job+' · Orders from '+regiments(s).find(r=>r.id===id).name+'.';
+ }
+}
+function issueRegimentalOrder(s,id,mission){
+ if(s.finished)return 'The battle has ended.';
+ const group=regiments(s).find(r=>r.id===id);if(!group?.members.some(u=>u.hp>0))return 'Choose a regiment with operational battalions.';
+ const o={type:mission.type,risk:mission.risk,effort:mission.effort,revision:(s.regimentalOrders?.[id]?.revision||0)+1,issuedTurn:s.turn,paused:false,...(['seize','defend'].includes(mission.type)?{objective:mission.objective}:{targetRegiment:mission.targetRegiment})};
+ const orders=JSON.parse(JSON.stringify(s.regimentalOrders||{}));orders[id]=o;
+ if(regimentalCycle(orders))return 'These support orders create a circular dependency. Give one regiment an objective mission first.';
+ if(o.effort==='main')for(const [other,order] of Object.entries(orders))if(other!==id)order.effort='supporting';
+ if(!regimentalValid({...s,regimentalOrders:orders}))return 'Choose a valid mission, objective or other regiment, and risk policy.';
+ if(['support','reserve'].includes(o.type)&&!regiments(s).find(r=>r.id===o.targetRegiment)?.members.some(u=>u.hp>0))return 'The supported regiment has no operational battalions.';
+ if(o.effort==='main')for(const [other,order] of Object.entries(orders))if(other!==id)order.effort='supporting';
+ s.regimentalOrders=orders;s.commandMode=true;s.commandLevel='Division';
+ for(const u of group.members)if(u.hp>0){u.order=null;delete u.regimentalTask}
+ syncRegimentalOrders(s);
+ // Main effort is a divisional supply priority, not a free combat bonus.
+ for(const r of regiments(s))if(orders[r.id])for(const u of r.members)u.priority=orders[r.id].effort==='main'?'high':'normal';
+ s.log=['REGIMENTAL ORDER — '+group.name+': '+o.type+' '+(['seize','defend'].includes(o.type)?scenario(s).objectives[o.objective].name:regiments(s).find(r=>r.id===o.targetRegiment).name)+'; '+o.effort+' effort.',...s.log].slice(0,120);
+ return null;
+}
+function pauseRegimentalOrder(s,id){const o=s.regimentalOrders?.[id];if(!o||s.finished)return 'No active regimental order.';o.paused=!o.paused;for(const u of s.units)if(u.regimentalTask?.regiment===id&&u.missionOrder){u.missionOrder.paused=o.paused;u.order=null}return null}
+function cancelRegimentalOrder(s,id){if(s.finished||!s.regimentalOrders?.[id])return 'No active regimental order.';delete s.regimentalOrders[id];for(const u of s.units)if(u.regimentalTask?.regiment===id){u.missionOrder=null;delete u.regimentalTask;u.priority='normal';u.commandReport='Regimental mission canceled; awaiting orders.'}return null}
+
+function commandValid(s){return regimentalValid(s)&&typeof s.commandMode==='boolean'&&commandLevels.includes(s.commandLevel)&&['all','organic'].includes(s.supportPolicy)&&Array.isArray(s.commandReports)&&s.commandReports.length<=40&&s.commandReports.every(r=>typeof r==='string'&&r.length<=1000)&&s.units.every(u=>(u.missionOrder===null||u.missionOrder===undefined||u.side==='us'&&['infantry','tank'].includes(u.type)&&missionTypes.includes(u.missionOrder.type)&&(u.missionOrder.mainEffort===undefined||typeof u.missionOrder.mainEffort==='string'&&s.units.some(v=>v.id===u.missionOrder.mainEffort&&v.side==='us'&&['infantry','tank'].includes(v.type)))&&['cautious','balanced','aggressive'].includes(u.missionOrder.risk)&&typeof u.missionOrder.paused==='boolean'&&(['seize','defend'].includes(u.missionOrder.type)?Number.isInteger(u.missionOrder.objective)&&u.missionOrder.objective>=0&&u.missionOrder.objective<3:typeof u.missionOrder.target==='string'&&u.missionOrder.target.length<=80))&&(u.commandReport===undefined||typeof u.commandReport==='string'&&u.commandReport.length<=1000))}
 function assignMission(s,id,mission){const u=alive(s).find(v=>v.id===id&&v.side==='us'&&['infantry','tank'].includes(v.type));if(s.finished||!u)return 'Select an operational infantry or armor formation.';const candidate={...mission,paused:false};if(!commandValid({...s,units:s.units.map(v=>v.id===id?{...v,missionOrder:candidate}:v)}))return 'Choose a valid mission, objective, and risk policy.';if(['support','reserve'].includes(candidate.type)&&!alive(s).some(v=>v.id===candidate.target&&v.id!==id&&v.side==='us'&&v.type!=='hq'))return 'Choose another operational formation to support.';u.missionOrder=candidate;u.order=null;u.commandReport='Mission assigned; review intentions before resolving.';return null}
 function assignCoordinatedAttack(s,mainId,supportIds,objective,risk='balanced'){
  if(!Array.isArray(supportIds))return 'Choose supporting maneuver formations.';
@@ -448,7 +508,7 @@ function subordinateInitiative(s,events){
   }else if(u.order?.type==='attack'&&critical){u.order={type:'defend'};events.push('LOCAL INITIATIVE — '+u.name+': suspends attack and establishes defensive posture pending orders.')}
  }
 }
-function resolve(s,decisions={}){if(s.finished)return s;let before=JSON.parse(JSON.stringify(s)),events=[];if(s.airRemaining===undefined)s.airRemaining=3;if(s.airTarget===undefined)s.airTarget=null;migrate(s);if(scenario(s).sandbox&&s.sandbox?.autoResupply)sandboxAction(s,'replenish');for(const u of s.units){u.reacted=false;u.reserveCommitted=u.order?.type==='reserve'}if(s.advancedRules)s.smoke=[];let suppressionHits=new Set();if(commandServices)commandServices.beginTurn(s,events);let deliveries=logistics(s);if(commandServices)commandServices.dispatch(s,deliveries,events);s.lastSupply={turn:s.turn,capacity:deliveries.capacity,delivered:deliveries.capacity-deliveries.unused,unused:deliveries.unused,blocked:deliveries.rows.filter(r=>!r.route).length};for(let r of deliveries.rows){let u=s.units.find(u=>u.id===r.id);u.stock=r.stock;events.push('SUPPLY — '+u.name+': '+(r.route?'+'+r.delivery+' delivered':'route cut')+', reserves '+u.stock+'/3 ('+u.priority+' priority; '+(s.allocationMode==='manual'?'requested '+r.request:'automatic')+').')}for(let u of alive(s)){u.supplied=supply(s,u);if(u.side==='de'&&u.supplied)u.stock=Math.min(3,u.stock+1);}
+function resolve(s,decisions={}){if(s.finished)return s;let before=JSON.parse(JSON.stringify(s)),events=[];if(s.airRemaining===undefined)s.airRemaining=3;if(s.airTarget===undefined)s.airTarget=null;migrate(s);syncRegimentalOrders(s);if(scenario(s).sandbox&&s.sandbox?.autoResupply)sandboxAction(s,'replenish');for(const u of s.units){u.reacted=false;u.reserveCommitted=u.order?.type==='reserve'}if(s.advancedRules)s.smoke=[];let suppressionHits=new Set();if(commandServices)commandServices.beginTurn(s,events);let deliveries=logistics(s);if(commandServices)commandServices.dispatch(s,deliveries,events);s.lastSupply={turn:s.turn,capacity:deliveries.capacity,delivered:deliveries.capacity-deliveries.unused,unused:deliveries.unused,blocked:deliveries.rows.filter(r=>!r.route).length};for(let r of deliveries.rows){let u=s.units.find(u=>u.id===r.id);u.stock=r.stock;events.push('SUPPLY — '+u.name+': '+(r.route?'+'+r.delivery+' delivered':'route cut')+', reserves '+u.stock+'/3 ('+u.priority+' priority; '+(s.allocationMode==='manual'?'requested '+r.request:'automatic')+').')}for(let u of alive(s)){u.supplied=supply(s,u);if(u.side==='de'&&u.supplied)u.stock=Math.min(3,u.stock+1);}
 // Plan with observed positions only. Never inspect Allied queued orders.
 events.push(...applyCommandPlan(s,decisions).map(r=>'COMMAND — '+r));for(const u of alive(s).filter(v=>v.side==='us'&&v.disengagePolicy==='withdraw'&&!v.order&&(v.hp<=5||v.cohesion<=45))){const retreat=withdrawalOrder({...s,weather:'fog'},u);if(retreat){u.order=retreat;events.push('COMMAND — '+u.name+' attempts to disengage under local authority.')}}subordinateInitiative(s,events);planOpponent(s);if(operational(s))operationalEngineering(s,events);
 for(let u of alive(s)){if(u.order?.type!=='move')continue;if(s.advancedRules){u.preparedTarget=null;u.preparedTurn=0}let p=path(s,u,u.order);if(p){let spent=0;for(let n of p.path){if(!stepAllowed(s,u,u,n)||alive(s).some(v=>v.id!==u.id&&v.x===n.x&&v.y===n.y))break;spent+=moveCost(s,u,u,n);if(spent>budget(u))break;u.x=n.x;u.y=n.y;if(enemyZone(s,u,u.side)){events.push('CONTACT — '+u.name+' halts in an enemy zone of control.');break}}events.push(u.name+' advances to '+(u.x+1)+', '+(u.y+1)+'.')}else events.push(u.name+' cannot advance: route blocked.')}
@@ -502,6 +562,7 @@ let minutes=c.start+turn*30,time=clock(s,minutes);let lines=['SITUATION — '+c.
 const g1=active.filter(u=>u.type!=='hq').map(personnelState),authorized=g1.reduce((n,p)=>n+p.personnel,0),present=g1.reduce((n,p)=>n+p.present,0);
 lines.push('G-1 PERSONNEL — Planning estimate '+present+'/'+authorized+' personnel-equivalent present ('+(authorized?Math.round(present/authorized*100):0)+'%). '+g1.filter(p=>p.readiness<50).length+' formations below 50% strength; '+g1.filter(p=>p.quality<.9).length+' formations integrating lower-experience replacements. Counts are indicative strength equivalents from abstract HP, not observed casualty rolls or documented historical establishments.');
 if(before){const quiet=!s.log.slice(1,s.log.indexOf(before.log[0])).some(t=>/ATTACK|COMBAT|DEFENSIVE FIRE|COUNTERATTACK| → /.test(t));if(quiet)lines.push('OPERATIONS TEMPO — No significant combat dispatch this turn. Units may be consolidating, maintaining equipment, improving positions, resting, or awaiting orders; absence of fighting does not imply that nothing is happening.');}
+if(s.regimentalOrders)lines.push('REGIMENTAL ORDERS — '+regiments(s).map(r=>{const o=s.regimentalOrders[r.id];return r.name+': '+(!o?'awaiting orders':(o.paused?'PAUSED ':'')+o.type+' '+(['seize','defend'].includes(o.type)?c.objectives[o.objective]?.name:regiments(s).find(t=>t.id===o.targetRegiment)?.name)+'; '+o.effort+' effort; '+r.members.filter(u=>u.hp>0).length+'/'+r.members.length+' battalions operational')}).join('. '));
 lines.push('HEADQUARTERS — '+headquarters(s).map(h=>h.echelon+': '+(h.hp<=0?'eliminated':h.hp<=3?'disrupted':'hex '+(h.x+1)+', '+(h.y+1))).join('; ')+'. '+active.filter(u=>u.type!=='hq'&&!commandStatus(s,u).ok).length+' formations outside the full Army command chain. '+(s.advancedRules?'Reserve support requires its issuing HQ chain.':'Command restrictions activate with Advanced Rules.'));
 if(s.advancedRules)lines.push('ADVANCED RULES — '+active.filter(u=>u.suppression>=2).length+' friendly formations pinned (suppression 2–3); '+active.filter(u=>u.type==='artillery').map(u=>u.name+': ammunition '+u.ammo+'/6').join('; ')+'. Smoke screens: '+s.smoke.length+'.');
 if(s.commandMode)lines.push('COMMAND MISSIONS — '+s.commandReports.slice(0,8).join(' ').slice(0,2750));
@@ -523,5 +584,5 @@ return {turn,lines}}
 
 function clock(s,minutes){const day=scenario(s).sandbox?"D"+(Math.floor(minutes/1440)+1)+" ":"";minutes%=1440;return day+Math.floor(minutes/60).toString().padStart(2,"0")+(minutes%60).toString().padStart(2,"0")}
 function sandboxAction(s,kind,options={}){return root.ProvingGround?root.ProvingGround.action(s,kind,options):"Training controls unavailable."}
-root.Game={clock,board,unitLimit,sandboxAction,establishment,personnelState,assignCoordinatedAttack,defenseCover,RouteQueue,random,installCommandServices,edgeSupplyRoute,sightRange,tacticalContact,withdrawalOrder,missionTypes,commandLevels,commandValid,assignMission,missionName,commandRoute,commandPlan,applyCommandPlan,headquartersPositions,movementNeighbors,regimentalSupply,supplyCapacity,scenarioSpecValid,registerScenario,operational,operationalValid,toggleOperational,riverLayout,bridgeList,riverCrossing,passage,engineerCapable,enemyZone,supplyInterdicted,stepAllowed,moveCost,lineOfSight,combatEstimate,hqCatalog,headquarters,headquartersValid,commandLink,commandStatus,supportAvailable,activeAttachments,assignCommander,advancedValid,toggleAdvanced,prepared,smokeCover,supportCatalog,attachments,fieldAttachments,attachmentValid,assignAttachment,supportBonus,W,H,objectives,cell,neighbors,dist,fresh,alive,path,range,budget,planOpponent,resolve,supply,supplyRoute,migrate,consumption,logistics,fireFactor,spotted,contacts,updateIntel,visibleLog,scenarios,scenario,reachable,makeReport,makeSupplyReport};if(typeof module!=='undefined')module.exports=root.Game;
+root.Game={regimentOf,regiments,regimentalValid,issueRegimentalOrder,pauseRegimentalOrder,cancelRegimentalOrder,syncRegimentalOrders,regimentalTasks,clock,board,unitLimit,sandboxAction,establishment,personnelState,assignCoordinatedAttack,defenseCover,RouteQueue,random,installCommandServices,edgeSupplyRoute,sightRange,tacticalContact,withdrawalOrder,missionTypes,commandLevels,commandValid,assignMission,missionName,commandRoute,commandPlan,applyCommandPlan,headquartersPositions,movementNeighbors,regimentalSupply,supplyCapacity,scenarioSpecValid,registerScenario,operational,operationalValid,toggleOperational,riverLayout,bridgeList,riverCrossing,passage,engineerCapable,enemyZone,supplyInterdicted,stepAllowed,moveCost,lineOfSight,combatEstimate,hqCatalog,headquarters,headquartersValid,commandLink,commandStatus,supportAvailable,activeAttachments,assignCommander,advancedValid,toggleAdvanced,prepared,smokeCover,supportCatalog,attachments,fieldAttachments,attachmentValid,assignAttachment,supportBonus,W,H,objectives,cell,neighbors,dist,fresh,alive,path,range,budget,planOpponent,resolve,supply,supplyRoute,migrate,consumption,logistics,fireFactor,spotted,contacts,updateIntel,visibleLog,scenarios,scenario,reachable,makeReport,makeSupplyReport};if(typeof module!=='undefined')module.exports=root.Game;
 })(typeof window==='undefined'?globalThis:window);

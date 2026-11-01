@@ -101,3 +101,7 @@ body.map-focus{overflow:hidden}body.map-focus .workspace{position:fixed;inset:0;
   body:not(.map-focus) .map-scroll { flex:none; height:auto; min-height:0; aspect-ratio:var(--scenario-map-ratio, 750 / 650); overflow:hidden; }
   body:not(.map-focus) #map { display:block; width:100%; height:100%; }
 }
+
+#build-bar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:10px 16px;background:#14251e;color:#fff4cc;border-bottom:2px solid #bca768;font-size:14px}#build-bar button{min-height:44px}#launch-dialog{max-width:560px}#launch-dialog button{min-height:48px;margin:6px}
+
+#regimental-summary{margin:12px 0}#regimental-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}.regiment-card{display:flex;flex-direction:column;gap:6px;text-align:left;min-height:100px}.regiment-card strong{font-size:17px}#regimental-dialog{width:min(1000px,95vw);max-width:1000px}#regiment-subordinates{overflow:auto}#regiment-subordinates table{width:100%;border-collapse:collapse}#regiment-subordinates th,#regiment-subordinates td{text-align:left;vertical-align:top;border-bottom:1px solid #bfc6aa;padding:10px}#regiment-subordinates small{display:block;margin-top:5px}body.map-focus #regimental-summary{display:none}

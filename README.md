@@ -3,6 +3,9 @@
 A free, independent, turn-based World War II operational command game. Game design and development lead: Larry Kuzniak. Development assistance: OpenAI ChatGPT/Codex.
 
 ## Current supplied version
+**0.25.1 — 1 November 2026.** Regimental orders, current-build checking and a visible Full screen button. Play directly: https://larrykuzniak.github.io/Utah-Command-/game/ . On iPad, add this address to the Home Screen with Open as Web App for a standalone window.
+
+### Earlier development baseline
 Current incremental test build (following **0.23.1**). Adds the Boundaries map switch, estimated maneuver frontage, formation-dependent spread, and selected-unit left/right contact or gap reports. Boundaries are a display estimate; combat rules and saved battle format are unchanged. See `checks/frontage-check.cjs` and the existing command/UI checks for validation.
 
 Performance review and timing results: see `PERFORMANCE-LOG.md`.
