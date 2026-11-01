@@ -1,0 +1,10 @@
+const fs=require('node:fs'),path=require('node:path');
+const dir=path.resolve(process.argv[2]||'game'),version=JSON.parse(fs.readFileSync(path.join(dir,'version.json'))).build;
+const folder='assets-'+version,entry='start-'+version.replaceAll('.','')+'.html';
+for(const e of fs.readdirSync(dir,{withFileTypes:true}))if(e.isDirectory()&&e.name.startsWith('assets-'))fs.rmSync(path.join(dir,e.name),{recursive:true});
+fs.mkdirSync(path.join(dir,folder));const assets=fs.readdirSync(dir).filter(f=>/\.(js|css)$/.test(f)&&f!=='sw.js');for(const f of assets)fs.copyFileSync(path.join(dir,f),path.join(dir,folder,f));
+let html=fs.readFileSync(path.join(dir,'index.html'),'utf8');html=html.replace(/((?:src|href)=")(?:assets-[^/]+\/)?([^"/]+\.(?:js|css))(?:\?[^\"]*)?"/g,(_,a,f)=>a+folder+'/'+f+'"');
+for(const f of ['index.html','open.html',entry])fs.writeFileSync(path.join(dir,f),html);
+let sw=fs.readFileSync(path.join(dir,'sw.js'),'utf8'),match=sw.match(/const ASSETS = (\[[\s\S]*?\]);/);let shell=JSON.parse(match[1].replaceAll("'",'"')).filter(f=>!f.startsWith('assets-')&&!/^start-\d+\.html$/.test(f));shell.push(entry,...assets.map(f=>folder+'/'+f));sw=sw.replace(match[0],'const ASSETS = '+JSON.stringify(shell)+';');fs.writeFileSync(path.join(dir,'sw.js'),sw);
+const manifest=JSON.parse(fs.readFileSync(path.join(dir,'manifest.webmanifest')));manifest.start_url='./'+entry;fs.writeFileSync(path.join(dir,'manifest.webmanifest'),JSON.stringify(manifest,null,2)+'\n');
+console.log('Packaged '+version+' with isolated assets and '+entry);

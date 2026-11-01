@@ -20,5 +20,10 @@ assert.equal(run("s.regimentalOrders['reg-8'].objective"),0);assert.equal(run("s
 assert(run('valid(JSON.parse(localStorage.getItem(KEY)))'),'UI saves pass actual app validator');
 elements['regiment-pause'].onclick();assert(run("s.regimentalOrders['reg-12'].paused"));elements['regiment-pause'].onclick();
 elements['regiment-cancel'].onclick();assert(!run("s.regimentalOrders['reg-12']"));assert(run("!!s.regimentalOrders['reg-8']"));
+run("RegimentalUI.open('reg-8')");elements['regiment-battalions'].onclick();
+assert(elements['command-unit'].innerHTML.includes('1/8 Infantry'));assert(!elements['command-unit'].innerHTML.includes('1/12 Infantry'));
+elements['standing-mission'].value='defend';elements['mission-goal'].value='2';elements['mission-risk'].value='balanced';elements['mission-assign'].onclick();
+assert(run("s.units.find(u=>u.id===selected).regimentalTask.override"));run('G.syncRegimentalOrders(s)');assert.equal(run('s.units.find(u=>u.id===selected).missionOrder.objective'),2);
+elements['directive-regiment'].value='reg-22';elements['directive-regiment'].onchange();assert(elements['command-unit'].innerHTML.includes('1/22 Infantry'));assert(!elements['command-unit'].innerHTML.includes('1/8 Infantry'));
 run('exitWithoutSaving()');assert.equal(storage['utah-command-v1'],undefined,'exit rolls regimental orders back to session start');
 console.log('PASS: regimental UI, receiving regiment selection, separate form defaults, task display, actual save validator, pause/resume/cancel and exit rollback.');

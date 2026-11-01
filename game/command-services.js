@@ -61,9 +61,10 @@
     rows.sort((a,b)=>rank[a.priority]-rank[b.priority]||a.stock-b.stock||a.id.localeCompare(b.id));
     for(const r of rows){const u=s.units.find(u=>u.id===r.id),options=choices(s,u,stocks),choice=options[0];r.route=choice?.route||null;r.depotId=choice?.point.id||null;r.distance=choice?.distance??null;
       const requested=Math.min(r.request,3-r.stock);
-      if(choice){r.delivery=Math.max(0,Math.min(requested,choice.limit,pool,stocks.get(r.depotId)));stocks.set(r.depotId,stocks.get(r.depotId)-r.delivery);pool-=r.delivery;r.stock+=r.delivery;}
+      const distribution=G.regimentalDistribution(s,u);r.distribution=distribution.reason;
+      if(choice){r.delivery=Math.max(0,Math.min(requested,choice.limit,pool,stocks.get(r.depotId),distribution.limit));stocks.set(r.depotId,stocks.get(r.depotId)-r.delivery);pool-=r.delivery;r.stock+=r.delivery;}
       r.use=G.consumption(u,s);r.after=Math.max(0,r.stock-r.use);r.shortfall=Math.max(0,r.request-r.delivery);
-      r.reason=!choice?'No stocked point in delivery range':!r.request?'No delivery requested':r.shortfall?(pool===0?'Transport allowance exhausted':'Distance, stocks, or reserve capacity limit'):'Request covered';
+      r.reason=distribution.limit<3&&r.delivery<requested?distribution.reason:!choice?'No stocked point in delivery range':!r.request?'No delivery requested':r.shortfall?(pool===0?'Transport allowance exhausted':'Distance, stocks, or reserve capacity limit'):'Request covered';
     }return {capacity,unused:pool,rows};
   }
   function setPoint(s,target,id=null){

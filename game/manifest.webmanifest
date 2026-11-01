@@ -1,7 +1,7 @@
 {
   "name": "Utah Command",
   "short_name": "Utah Command",
-  "start_url": "./open.html",
+  "start_url": "./start-0260.html",
   "display": "standalone",
   "background_color": "#f4f1e7",
   "theme_color": "#202b26",

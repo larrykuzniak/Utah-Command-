@@ -1,6 +1,6 @@
 const assert=require('node:assert/strict'),G=require('../game/engine.js');
 require('../game/command-services.js')(G);
-let s=G.fresh('utah-division');
+let s=G.fresh('utah-division');delete s.regimentalOrders;for(const u of s.units){u.missionOrder=null;delete u.regimentalTask}
 assert.deepEqual(G.regiments(s).map(r=>r.id),['reg-8','reg-12','reg-22']);
 assert(G.regiments(s).every(r=>r.members.length===3));
 const issue=(id,type='seize',objective=0,effort='supporting')=>G.issueRegimentalOrder(s,id,{type,objective,risk:'balanced',effort});

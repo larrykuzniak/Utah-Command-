@@ -1,5 +1,5 @@
 (() => {
-  const BUILD = '0.25.1', $ = id => document.getElementById(id);
+  const BUILD = '0.26.0', $ = id => document.getElementById(id);
   let registration, waiting, reloading = false;
   const status = text => { $('update-state').textContent=text; $('launch-version').textContent=text; };
   const offline = text => $('offline-status').textContent=text;

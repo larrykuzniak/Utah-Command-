@@ -17,7 +17,7 @@ async function run() {
   }, fetch: async request => {
     requests++;
     if (!online) throw Error('Offline');
-    const name = new URL(request.url || request).pathname.split('/').at(-1) || 'index.html';
+    const name = new URL(request.url || request).pathname.slice(new URL(scope).pathname.length) || 'index.html';
     // Reproduce the production host's canonical redirect.
     if (new URL(request.url || request).pathname.endsWith('/index.html')) {
       return {ok: true, redirected: true, type: 'basic'};
