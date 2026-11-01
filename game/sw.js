@@ -3,7 +3,7 @@
 // Each installed edition owns its own cache and cleanup boundary.
 const CACHE_PREFIX = 'utah-command-shell-' + new URL(self.registration.scope).pathname + ':';
 const CACHE = CACHE_PREFIX + 'v0.25.1';
-const ASSETS = ['index.html', 'style.css', 'engine.js', 'terrain.js', 'app.js', 'frontage.js', 'regimental-ui.js', 'builder.js', 'logistics-ui.js', 'command-services.js', 'command-desk.js', 'pwa.js',
+const ASSETS = ['index.html', 'open.html', 'style.css', 'engine.js', 'terrain.js', 'app.js', 'frontage.js', 'regimental-ui.js', 'builder.js', 'logistics-ui.js', 'command-services.js', 'command-desk.js', 'pwa.js',
   'normandy-map-v2.jpg', 'manifest.webmanifest', 'icon.svg', 'icon-180.png', 'icon-192.png', 'icon-512.png', 'quickstart.html', 'field-manual.html', 'support.html', 'privacy.html', 'distribution.js'];
 const assetURLs = ASSETS.map(path => new URL(path, self.registration.scope).href);
 self.addEventListener('install', event => {
@@ -47,11 +47,12 @@ self.addEventListener('fetch', event => {
   // Cache only the known game shell. Never intercept authentication or API calls.
   const navigation = event.request.mode === 'navigate' &&
     (url.pathname === new URL(self.registration.scope).pathname || url.href.split('?')[0] === assetURLs[0]);
-  const asset = assetURLs.includes(url.href);
+  const assetKey = url.origin + url.pathname;
+  const asset = assetURLs.includes(assetKey);
   if (!navigation && !asset) return;
   event.respondWith((async () => {
     const cache = await caches.open(CACHE);
-    const cached = await cache.match(navigation ? assetURLs[0] : url.href);
+    const cached = await cache.match(navigation ? assetURLs[0] : assetKey);
     if (navigation) {
       try { const response = await fetch(new Request(event.request, {cache: 'no-store'})); if(response.ok) return response; } catch (_) {}
     }
