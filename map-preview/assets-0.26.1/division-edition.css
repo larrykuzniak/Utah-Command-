@@ -1,0 +1,15 @@
+/* Utah Command Division Edition — reversible UI scope gate.
+ * This development branch intentionally retains legacy engine data for save compatibility.
+ * Removed controls are hidden, not deleted; no combat rules are changed here.
+ */
+.division-caption {display:block;font-size:.68rem;letter-spacing:.09em;font-weight:700;color:#e8d4a6;margin-top:.1rem}
+#supply-command,#headquarters-open {display:none!important}
+#command-level {pointer-events:none;opacity:.68}
+#command-level option:not([value="Division"]):not(:checked){display:none}
+#desk-tabs [data-desk-tab="supply"] {display:none!important}
+#logistics-command {display:none!important}
+#command-dialog .command-form {align-items:end}
+@media (max-width: 980px) {
+  header .header-actions {display:flex;flex-wrap:wrap;gap:.35rem}
+  header .header-actions button {min-height:40px}
+}
