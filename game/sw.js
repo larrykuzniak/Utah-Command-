@@ -2,7 +2,7 @@
 // existing windows to close so a battle never mixes old and new game files.
 // Each installed edition owns its own cache and cleanup boundary.
 const CACHE_PREFIX = 'utah-command-shell-' + new URL(self.registration.scope).pathname + ':';
-const CACHE = CACHE_PREFIX + 'v0.26.2-data';
+const CACHE = CACHE_PREFIX + 'v0.26.2-map-effects';
 const ASSETS = ["index.html","open.html","style.css","engine.js","terrain.js","app.js","frontage.js","regimental-ui.js","builder.js","logistics-ui.js","command-services.js","command-desk.js","pwa.js","normandy-map-v2.jpg","manifest.webmanifest","icon.svg","icon-180.png","icon-192.png","icon-512.png","quickstart.html","field-manual.html","support.html","privacy.html","distribution.js","start-0261.html","assets-0.26.1/app.js","assets-0.26.1/builder.js","assets-0.26.1/command-desk.js","assets-0.26.1/command-services.js","assets-0.26.1/distribution.js","assets-0.26.1/division-edition.css","assets-0.26.1/engine.js","assets-0.26.1/frontage.js","assets-0.26.1/logistics-ui.js","assets-0.26.1/proving-ground.js","assets-0.26.1/pwa.js","assets-0.26.1/regimental-ui.js","assets-0.26.1/style.css","assets-0.26.1/terrain.js","operational-data.js","operational-panel.js"];
 const assetURLs = ASSETS.map(path => new URL(path, self.registration.scope).href);
 self.addEventListener('install', event => {

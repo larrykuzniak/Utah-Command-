@@ -138,3 +138,10 @@ body.map-focus .orders-card #roster{max-height:none;overflow:visible;flex:0 0 au
  body:not(.map-focus):not(.supply-command-view) .workspace .dispatch{grid-column:1;grid-row:4}
  body.division-mode:not(.map-focus):not(.supply-command-view) .workspace .dispatch{grid-row:3}
 }
+
+/* Map feedback for executed support missions. */
+.counter:has(> g > title) text { paint-order: stroke; stroke: #243026; stroke-width: 2px; stroke-linejoin: round; }
+.strike-flash { animation: strike-flash .75s ease-out both; }
+.strike-label { fill: #fff6d7; font: 800 11px system-ui; paint-order: stroke; stroke: #382b20; stroke-width: 3px; }
+@keyframes strike-flash { from { opacity: .95; transform: scale(.55); } to { opacity: .1; transform: scale(1.5); } }
+@media (prefers-reduced-motion: reduce) { .strike-flash { animation: none; opacity: .65; } }
