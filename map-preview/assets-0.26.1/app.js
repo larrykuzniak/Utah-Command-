@@ -217,19 +217,24 @@ function resolveBattle(decisions={}){
   G.resolve(s,decisions,impact=>impacts.push(impact));
   save();
   render();
+  const showImpacts=()=>{
   const map=$('map'), ns='http://www.w3.org/2000/svg';
   for(const impact of impacts){
     const p=pos(impact), marker=document.createElementNS(ns,'g');
     marker.setAttribute('transform',`translate(${p.x} ${p.y})`);
     marker.setAttribute('pointer-events','none');
     marker.innerHTML=`<circle class="strike-flash" r="23" fill="${impact.kind==='air'?'#ffdd7a':'#ff9b58'}" stroke="#fff1b0" stroke-width="4"/><text class="strike-label" y="-29" text-anchor="middle">${impact.kind==='air'?'AIR IMPACT':'ARTILLERY IMPACT'}</text>`;
+    marker.querySelector('.strike-flash').style.animationDuration='2s';
     map.append(marker);
-    setTimeout(()=>marker.remove(),850);
+    setTimeout(()=>marker.remove(),2000);
   }
-  if(!s.autoReport)return;
-  if(!impacts.length){showReport();return;}
+  };
+  if(!s.autoReport){showImpacts();return;}
+  showReport();
   const resolved=s,turn=s.turn;
-  setTimeout(()=>{if(s===resolved&&s.turn===turn&&!exited&&s.autoReport&&!document.querySelector('dialog[open]'))showReport()},850);
+  $('report-dialog').addEventListener('close',()=>{
+    if(s===resolved&&s.turn===turn&&!exited)showImpacts();
+  },{once:true});
 }
 let directiveRegiment=null;
 function openCommand(){const level=G.divisionGame(s)?'Division':'Regiment';if(s.commandLevel!==level){s.commandLevel=level;save()}renderCommandPanel();$('command-dialog').showModal()}
